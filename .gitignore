@@ -29,7 +29,7 @@ coverage/
 .nyc_output/
 
 # Generated test videos
-test-videos/
+test-videos/output
 
 # OS specific files
 .DS_Store

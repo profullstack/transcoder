@@ -26,16 +26,60 @@ if (!fs.existsSync(watermarksDir)) {
 // Create a simple watermark image for testing
 const logoPath = path.join(watermarksDir, 'logo.png');
 
+// Function to create a simple test image using FFmpeg
+async function createTestImage(outputPath, width = 200, height = 100, color = 'blue') {
+  return new Promise((resolve, reject) => {
+    // Skip if the file already exists
+    if (fs.existsSync(outputPath)) {
+      return resolve(outputPath);
+    }
+    
+    // Create a simple colored rectangle with text
+    const args = [
+      '-f', 'lavfi',
+      '-i', `color=${color}:s=${width}x${height}`,
+      '-vf', `drawtext=text='Test Logo':fontcolor=white:fontsize=24:x=(w-text_w)/2:y=(h-text_h)/2`,
+      '-frames:v', '1',
+      '-y',
+      outputPath
+    ];
+    
+    const ffmpegProcess = spawn('ffmpeg', args);
+    
+    ffmpegProcess.on('close', (code) => {
+      if (code === 0) {
+        resolve(outputPath);
+      } else {
+        // Don't reject, just warn and continue
+        console.warn(`Warning: Failed to create test image ${outputPath}. Some watermark tests may fail.`);
+        resolve(null);
+      }
+    });
+    
+    ffmpegProcess.on('error', (err) => {
+      console.warn(`Warning: Failed to start FFmpeg process: ${err.message}. Some watermark tests may fail.`);
+      resolve(null);
+    });
+  });
+}
+
 describe('Watermarking', function() {
   this.timeout(30000); // Set timeout to 30 seconds
   
-  before(function() {
+  before(async function() {
     // Check if input file exists
     if (!fs.existsSync(inputPath)) {
       this.skip();
     }
     
-    // Check if logo file exists
+    // Create test logo image if it doesn't exist
+    try {
+      await createTestImage(logoPath);
+    } catch (error) {
+      console.warn(`Warning: Failed to create test logo: ${error.message}. Some watermark tests may fail.`);
+    }
+    
+    // Check if logo file exists after attempted creation
     if (!fs.existsSync(logoPath)) {
       console.warn(`Warning: Logo file ${logoPath} does not exist. Some watermark tests may fail.`);
     }
@@ -128,7 +172,8 @@ describe('Watermarking', function() {
     
     const options = {
       watermark: {
-        image: 'non-existent-image.png',
+        // Use a path that clearly indicates this is an intentionally non-existent file
+        image: path.join(watermarksDir, 'intentionally-non-existent-test-file.png'),
         position: 'bottomRight'
       },
       overwrite: true

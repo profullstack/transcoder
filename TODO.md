@@ -70,7 +70,7 @@ await transcode('input.mp4', 'output.mp4', {
 });
 ```
 
-### 6. 📱 Responsive Video Profiles (Not Implemented)
+### 6. 📱 Responsive Video Profiles ✅ (IMPLEMENTED)
 
 **What**: Generate multiple versions of a video optimized for different devices and connection speeds.
 
@@ -78,7 +78,7 @@ await transcode('input.mp4', 'output.mp4', {
 
 ```javascript
 // Example API
-await transcode('input.mp4', {
+await transcodeResponsive('input.mp4', {
   responsive: true,
   profiles: ['mobile', 'tablet', 'desktop', 'hd']
 });
@@ -209,6 +209,7 @@ const results = await transcodeImageBatch([
 4. ✅ Metadata Extraction (Low effort, high value)
 5. ✅ CLI Tool (Expands user base, moderate effort)
 6. ✅ Video Trimming & Clipping (High impact, moderate effort)
+7. ✅ Responsive Video Profiles (High impact, moderate effort)
 
 ### Next Features to Implement
 1. 🔄 Batch Processing (High utility, low effort) - NEXT PRIORITY

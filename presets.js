@@ -228,6 +228,75 @@ export const MOBILE_PRESET = {
 };
 
 /**
+ * HD Optimized Preset
+ * - Recommended resolution: 1920x1080
+ * - Aspect ratio: 16:9
+ * - Video codec: H.264
+ * - Audio codec: AAC
+ * - Optimized for high-quality playback on large screens
+ */
+export const HD_PRESET = {
+  videoCodec: 'libx264',
+  audioCodec: 'aac',
+  videoBitrate: '6000k',
+  audioBitrate: '192k',
+  preset: 'medium',
+  profile: 'high',
+  level: '4.1',
+  pixelFormat: 'yuv420p',
+  movflags: '+faststart',
+  width: 1920,
+  height: 1080,
+  fps: 30
+};
+
+/**
+ * Tablet Optimized Preset
+ * - Recommended resolution: 1280x720
+ * - Aspect ratio: 16:9
+ * - Video codec: H.264
+ * - Audio codec: AAC
+ * - Optimized for tablet devices with medium-speed connections
+ */
+export const TABLET_PRESET = {
+  videoCodec: 'libx264',
+  audioCodec: 'aac',
+  videoBitrate: '2000k',
+  audioBitrate: '128k',
+  preset: 'medium',
+  profile: 'main',
+  level: '3.1',
+  pixelFormat: 'yuv420p',
+  movflags: '+faststart',
+  width: 1280,
+  height: 720,
+  fps: 30
+};
+
+/**
+ * Low Bandwidth Preset
+ * - Recommended resolution: 480x270
+ * - Aspect ratio: 16:9
+ * - Video codec: H.264
+ * - Audio codec: AAC
+ * - Optimized for very slow connections
+ */
+export const LOW_BANDWIDTH_PRESET = {
+  videoCodec: 'libx264',
+  audioCodec: 'aac',
+  videoBitrate: '500k',
+  audioBitrate: '64k',
+  preset: 'fast',
+  profile: 'baseline',
+  level: '3.0',
+  pixelFormat: 'yuv420p',
+  movflags: '+faststart',
+  width: 480,
+  height: 270,
+  fps: 24
+};
+
+/**
  * Map of preset names to preset configurations
  */
 export const PRESETS = {
@@ -240,7 +309,21 @@ export const PRESETS = {
   'tiktok': TIKTOK_PRESET,
   'vimeo-hd': VIMEO_HD_PRESET,
   'web': WEB_PRESET,
-  'mobile': MOBILE_PRESET
+  'mobile': MOBILE_PRESET,
+  'hd': HD_PRESET,
+  'tablet': TABLET_PRESET,
+  'low-bandwidth': LOW_BANDWIDTH_PRESET
+};
+
+/**
+ * Responsive profile sets for different use cases
+ */
+export const RESPONSIVE_PROFILES = {
+  'standard': ['mobile', 'web', 'hd'],
+  'comprehensive': ['low-bandwidth', 'mobile', 'tablet', 'web', 'hd'],
+  'minimal': ['mobile', 'web'],
+  'social': ['mobile', 'instagram', 'twitter', 'facebook'],
+  'professional': ['web', 'vimeo-hd', 'youtube-hd']
 };
 
 /**
@@ -256,4 +339,19 @@ export function getPreset(presetName) {
   
   const normalizedName = presetName.toLowerCase();
   return PRESETS[normalizedName] || null;
+}
+
+/**
+ * Get a responsive profile set by name
+ *
+ * @param {string} profileSetName - The name of the responsive profile set to retrieve
+ * @returns {Array<string>|null} - Array of profile names or null if not found
+ */
+export function getResponsiveProfileSet(profileSetName) {
+  if (!profileSetName || typeof profileSetName !== 'string') {
+    return null;
+  }
+  
+  const normalizedName = profileSetName.toLowerCase();
+  return RESPONSIVE_PROFILES[normalizedName] || null;
 }

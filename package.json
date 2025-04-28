@@ -29,6 +29,7 @@
     "example:watermarking": "node examples/watermarking.js",
     "example:metadata": "node examples/metadata-extraction.js",
     "example:trimming": "node examples/video-trimming.js",
+    "example:responsive": "node examples/responsive-profiles.js",
     "install-ffmpeg": "./bin/build-ffmpeg.sh",
     "cli": "./bin/transcoder.js"
   },
