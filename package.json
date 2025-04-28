@@ -12,8 +12,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/profullstack/transcode.git"
+    "url": "https://github.com/profullstack/transcoder.git"
   },
+  "bugs": {
+    "url": "https://github.com/profullstack/transcoder/issues"
+  },
+  "homepage": "https://profullstack.com",
   "scripts": {
     "test": "mocha test/**/*.test.js",
     "test:watermarking": "mocha test/watermarking.test.js",
