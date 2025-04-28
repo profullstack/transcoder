@@ -7,6 +7,7 @@ import { createRequire } from 'module';
 import fs from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
+import { getPreset, PRESETS } from './presets.js';
 
 /**
  * Default transcoding options for web-friendly MP4 format
@@ -121,8 +122,27 @@ export async function transcode(inputPath, outputPath, options = {}) {
   // Create an emitter for progress events
   const emitter = new TranscodeEmitter();
   
-  // Merge default options with user options
-  const settings = { ...DEFAULT_OPTIONS, ...options };
+  // Handle platform-specific presets
+  let mergedOptions = { ...options };
+  
+  // If a preset name is provided, get the preset configuration
+  if (options.preset && typeof options.preset === 'string' && PRESETS[options.preset.toLowerCase()]) {
+    const presetConfig = getPreset(options.preset);
+    if (presetConfig) {
+      // Merge preset with user options (user options take precedence over preset)
+      mergedOptions = { ...presetConfig, ...options };
+      
+      // Remove the preset name to avoid confusion with ffmpeg's preset parameter
+      if (mergedOptions.preset === options.preset) {
+        // If the preset name is the same as the original options.preset,
+        // restore the ffmpeg preset value from the preset config
+        mergedOptions.preset = presetConfig.preset;
+      }
+    }
+  }
+  
+  // Merge default options with user options (including preset if applicable)
+  const settings = { ...DEFAULT_OPTIONS, ...mergedOptions };
   
   // Validate input and output paths
   if (!inputPath || typeof inputPath !== 'string') {
@@ -284,30 +304,60 @@ export async function transcode(inputPath, outputPath, options = {}) {
 
 /**
  * Example usage with async/await
- * 
+ *
  * ```javascript
  * import { transcode } from '@profullstack/transcoder';
- * 
+ *
  * async function transcodeVideo() {
  *   try {
  *     const { outputPath, emitter } = await transcode('input.mov', 'output.mp4');
- *     
+ *
  *     // Listen for progress events
  *     emitter.on('progress', (progress) => {
  *       console.log(`Progress: ${JSON.stringify(progress)}`);
  *     });
- *     
+ *
  *     // Listen for log events
  *     emitter.on('log', (log) => {
  *       console.log(`Log: ${log}`);
  *     });
- *     
+ *
  *     console.log(`Transcoding completed: ${outputPath}`);
  *   } catch (error) {
  *     console.error(`Transcoding failed: ${error.message}`);
  *   }
  * }
- * 
+ *
  * transcodeVideo();
  * ```
+ *
+ * Example usage with platform-specific presets:
+ *
+ * ```javascript
+ * import { transcode } from '@profullstack/transcoder';
+ *
+ * // Transcode for Instagram
+ * await transcode('input.mp4', 'instagram-output.mp4', { preset: 'instagram' });
+ *
+ * // Transcode for YouTube HD
+ * await transcode('input.mp4', 'youtube-output.mp4', { preset: 'youtube-hd' });
+ *
+ * // Transcode for Twitter with custom overrides
+ * await transcode('input.mp4', 'twitter-output.mp4', {
+ *   preset: 'twitter',
+ *   videoBitrate: '6000k' // Override the preset's videoBitrate
+ * });
+ * ```
+ *
+ * Available presets:
+ * - instagram: Square format (1080x1080) optimized for Instagram feed
+ * - instagram-stories: Vertical format (1080x1920) optimized for Instagram stories
+ * - youtube-hd: HD format (1920x1080) optimized for YouTube
+ * - youtube-4k: 4K format (3840x2160) optimized for YouTube
+ * - twitter: Format optimized for Twitter
+ * - facebook: Format optimized for Facebook
+ * - tiktok: Vertical format (1080x1920) optimized for TikTok
+ * - vimeo-hd: HD format optimized for Vimeo
+ * - web: Format optimized for web playback
+ * - mobile: Format optimized for mobile devices
  */

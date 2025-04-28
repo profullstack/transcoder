@@ -6,6 +6,7 @@
   "main": "index.js",
   "files": [
     "index.js",
+    "presets.js",
     "README.md"
   ],
   "repository": {
@@ -16,6 +17,7 @@
     "test": "mocha test/**/*.test.js",
     "generate-test-video": "node scripts/generate-test-video.js",
     "example": "node examples/basic-usage.js",
+    "example:presets": "node examples/smart-presets.js",
     "install-ffmpeg": "./bin/build-ffmpeg.sh"
   },
   "bin": {
@@ -28,7 +30,11 @@
     "mp4",
     "h264",
     "browser-compatible",
-    "streaming"
+    "streaming",
+    "instagram",
+    "youtube",
+    "twitter",
+    "social-media"
   ],
   "author": "ProFullStack",
   "license": "MIT",

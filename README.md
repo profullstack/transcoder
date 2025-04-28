@@ -10,6 +10,7 @@ A lightweight Node.js module for transcoding videos to web-friendly MP4 format u
 - Async/await API with real-time progress reporting
 - Event-based progress tracking
 - Customizable encoding options
+- Smart Presets for popular platforms (Instagram, YouTube, Twitter, etc.)
 - No file storage - just passes through to FFmpeg
 - Lightweight with minimal dependencies
 
@@ -150,6 +151,51 @@ async function transcodeWithOptions() {
 transcodeWithOptions();
 ```
 
+### Using Smart Presets
+
+The module includes pre-configured settings optimized for specific platforms and use cases:
+
+```javascript
+import { transcode } from '@profullstack/transcoder';
+
+// Transcode for Instagram (square format 1080x1080)
+await transcode('input.mp4', 'instagram-output.mp4', { preset: 'instagram' });
+
+// Transcode for YouTube HD (1920x1080)
+await transcode('input.mp4', 'youtube-output.mp4', { preset: 'youtube-hd' });
+
+// Transcode for Twitter with custom overrides
+await transcode('input.mp4', 'twitter-output.mp4', {
+  preset: 'twitter',
+  videoBitrate: '6000k' // Override the preset's videoBitrate
+});
+```
+
+Available presets:
+
+| Preset | Description | Resolution | Optimized For |
+|--------|-------------|------------|---------------|
+| `instagram` | Square format | 1080x1080 | Instagram feed |
+| `instagram-stories` | Vertical format | 1080x1920 | Instagram stories |
+| `youtube-hd` | HD format | 1920x1080 | YouTube |
+| `youtube-4k` | 4K format | 3840x2160 | YouTube |
+| `twitter` | HD format | 1280x720 | Twitter |
+| `facebook` | HD format | 1280x720 | Facebook |
+| `tiktok` | Vertical format | 1080x1920 | TikTok |
+| `vimeo-hd` | HD format | 1920x1080 | Vimeo |
+| `web` | Optimized for web | 1280x720 | Web playback |
+| `mobile` | Optimized for mobile | 640x360 | Mobile devices |
+
+You can also override any preset setting by providing your own options:
+
+```javascript
+// Use YouTube HD preset but with a higher bitrate
+await transcode('input.mp4', 'output.mp4', {
+  preset: 'youtube-hd',
+  videoBitrate: '15000k'
+});
+```
+
 ## API Reference
 
 ### transcode(inputPath, outputPath, [options])
@@ -160,7 +206,8 @@ Transcodes a video file to web-friendly MP4 format.
 
 - `inputPath` (string): Path to the input video file
 - `outputPath` (string): Path where the transcoded video will be saved
-- `options` (object, optional): Transcoding options
+- `options` (object, optional): Transcoding options or preset name
+  - Can include a `preset` property with one of the predefined platform presets
 
 **Returns:**
 
@@ -189,6 +236,7 @@ The following options can be customized:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
+| preset | string | - | Platform preset name (e.g., 'instagram', 'youtube-hd', 'twitter') |
 | videoCodec | string | 'libx264' | Video codec to use |
 | audioCodec | string | 'aac' | Audio codec to use |
 | videoBitrate | string | '1500k' | Video bitrate |
@@ -204,6 +252,8 @@ The following options can be customized:
 | threads | number | 0 | Number of threads to use (0 = auto) |
 | overwrite | boolean | false | Whether to overwrite existing output file |
 
+**Note:** When using a platform preset, the `preset` option refers to the platform name (e.g., 'instagram'). The FFmpeg encoding preset (e.g., 'medium', 'slow') is still configurable but is included in each platform preset with appropriate values.
+
 ## How It Works
 
 This module uses Node.js's built-in `child_process.spawn()` to call FFmpeg with appropriate parameters to transcode the video. It parses the FFmpeg output to provide real-time progress updates through an event emitter. The module does not store any files itself but simply passes through to FFmpeg.
@@ -218,8 +268,11 @@ The module includes a script to generate a 5-second test video for manual testin
 # Generate a test video
 pnpm generate-test-video
 
-# Run the example with the test video
+# Run the basic example with the test video
 pnpm example
+
+# Run the Smart Presets example
+pnpm example:presets
 ```
 
 This will:
@@ -236,8 +289,12 @@ The module includes Mocha tests for automated testing:
 pnpm test
 ```
 
-The `test/transcode.test.js` file contains Mocha/Chai tests that provide test coverage for the module. These tests verify the core functionality of the module, including error handling and option processing.
+The module includes the following test files:
+- `test/transcode.test.js` - Tests for the core transcoding functionality
+- `test/presets.test.js` - Tests for the Smart Presets feature
+
+These tests verify the core functionality of the module, including error handling, option processing, and preset handling.
 
 ## License
 
-ISC
+MIT
