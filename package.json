@@ -22,6 +22,7 @@
     "example:presets": "node examples/smart-presets.js",
     "example:thumbnails": "node examples/thumbnail-generation.js",
     "example:watermarking": "node examples/watermarking.js",
+    "example:metadata": "node examples/metadata-extraction.js",
     "install-ffmpeg": "./bin/build-ffmpeg.sh",
     "cli": "./bin/transcoder.js"
   },

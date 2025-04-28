@@ -176,6 +176,42 @@ async function transcodeWithOptions() {
 transcodeWithOptions();
 ```
 
+### Extracting Metadata
+
+The module automatically extracts metadata from the input video during transcoding:
+
+```javascript
+import { transcode } from '@profullstack/transcoder';
+
+async function extractMetadata() {
+  try {
+    const { outputPath, metadata } = await transcode('input.mp4', 'output.mp4');
+    
+    // Display format information
+    console.log('Format:', metadata.format.formatName);
+    console.log('Duration:', metadata.format.duration, 'seconds');
+    console.log('File Size:', metadata.format.size, 'bytes');
+    console.log('Bitrate:', metadata.format.bitrate, 'bps');
+    
+    // Display video stream information
+    console.log('Video Codec:', metadata.video.codec);
+    console.log('Resolution:', metadata.video.width + 'x' + metadata.video.height);
+    console.log('Frame Rate:', metadata.video.fps, 'fps');
+    console.log('Pixel Format:', metadata.video.pixelFormat);
+    
+    // Display audio stream information
+    console.log('Audio Codec:', metadata.audio.codec);
+    console.log('Sample Rate:', metadata.audio.sampleRate, 'Hz');
+    console.log('Channels:', metadata.audio.channels);
+    console.log('Channel Layout:', metadata.audio.channelLayout);
+  } catch (error) {
+    console.error('Transcoding failed:', error.message);
+  }
+}
+
+extractMetadata();
+```
+
 ### Using Smart Presets
 
 The module includes pre-configured settings optimized for specific platforms and use cases:
@@ -368,6 +404,10 @@ Transcodes a video file to web-friendly MP4 format.
   - `outputPath` (string): Path to the transcoded video
   - `emitter` (TranscodeEmitter): Event emitter for progress tracking
   - `thumbnails` (Array, optional): Array of thumbnail paths if thumbnails were requested
+  - `metadata` (Object, optional): Video metadata extracted from the input file
+    - `format`: Format information (duration, size, bitrate, etc.)
+    - `video`: Video stream information (codec, resolution, fps, etc.)
+    - `audio`: Audio stream information (codec, sample rate, channels, etc.)
 
 ### generateThumbnails(inputPath, outputDir, [options])
 

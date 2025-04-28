@@ -279,17 +279,18 @@ export async function generateThumbnails(inputPath, outputDir, options) {
 }
 
 /**
- * Gets the duration of a video file in seconds
+ * Gets video metadata using ffprobe
  *
  * @param {string} inputPath - Path to the video file
- * @returns {Promise<number>} - Promise that resolves with the duration in seconds
+ * @returns {Promise<Object>} - Promise that resolves with the video metadata
  */
-async function getVideoDuration(inputPath) {
+async function getVideoMetadata(inputPath) {
   return new Promise((resolve, reject) => {
     const args = [
-      '-v', 'error',
-      '-show_entries', 'format=duration',
-      '-of', 'default=noprint_wrappers=1:nokey=1',
+      '-v', 'quiet',
+      '-print_format', 'json',
+      '-show_format',
+      '-show_streams',
       inputPath
     ];
     
@@ -308,8 +309,70 @@ async function getVideoDuration(inputPath) {
     
     ffprobeProcess.on('close', (code) => {
       if (code === 0) {
-        const duration = parseFloat(output.trim());
-        resolve(duration);
+        try {
+          const metadata = JSON.parse(output);
+          
+          // Extract relevant metadata
+          const result = {
+            format: {},
+            video: {},
+            audio: {}
+          };
+          
+          // Format metadata
+          if (metadata.format) {
+            result.format = {
+              filename: metadata.format.filename,
+              formatName: metadata.format.format_name,
+              duration: parseFloat(metadata.format.duration) || 0,
+              size: parseInt(metadata.format.size) || 0,
+              bitrate: parseInt(metadata.format.bit_rate) || 0
+            };
+          }
+          
+          // Video stream metadata
+          const videoStream = metadata.streams?.find(stream => stream.codec_type === 'video');
+          if (videoStream) {
+            result.video = {
+              codec: videoStream.codec_name,
+              profile: videoStream.profile,
+              width: videoStream.width,
+              height: videoStream.height,
+              bitrate: parseInt(videoStream.bit_rate) || 0,
+              fps: eval(videoStream.r_frame_rate) || 0,
+              pixelFormat: videoStream.pix_fmt,
+              colorSpace: videoStream.color_space,
+              duration: parseFloat(videoStream.duration) || 0
+            };
+            
+            // Calculate aspect ratio
+            if (videoStream.width && videoStream.height) {
+              result.video.aspectRatio = `${videoStream.width}:${videoStream.height}`;
+              
+              // Add display aspect ratio if available
+              if (videoStream.display_aspect_ratio) {
+                result.video.displayAspectRatio = videoStream.display_aspect_ratio;
+              }
+            }
+          }
+          
+          // Audio stream metadata
+          const audioStream = metadata.streams?.find(stream => stream.codec_type === 'audio');
+          if (audioStream) {
+            result.audio = {
+              codec: audioStream.codec_name,
+              sampleRate: parseInt(audioStream.sample_rate) || 0,
+              channels: audioStream.channels,
+              channelLayout: audioStream.channel_layout,
+              bitrate: parseInt(audioStream.bit_rate) || 0,
+              duration: parseFloat(audioStream.duration) || 0
+            };
+          }
+          
+          resolve(result);
+        } catch (error) {
+          reject(new Error(`Failed to parse metadata: ${error.message}`));
+        }
       } else {
         reject(new Error(`FFprobe failed with code ${code}: ${errorOutput}`));
       }
@@ -319,6 +382,55 @@ async function getVideoDuration(inputPath) {
       reject(new Error(`Failed to start FFprobe process: ${err.message}`));
     });
   });
+}
+
+/**
+ * Gets the duration of a video file in seconds
+ *
+ * @param {string} inputPath - Path to the video file
+ * @returns {Promise<number>} - Promise that resolves with the duration in seconds
+ */
+async function getVideoDuration(inputPath) {
+  try {
+    const metadata = await getVideoMetadata(inputPath);
+    return metadata.format.duration || 0;
+  } catch (error) {
+    // Fallback to the old method if metadata extraction fails
+    return new Promise((resolve, reject) => {
+      const args = [
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        inputPath
+      ];
+      
+      const ffprobeProcess = spawn('ffprobe', args);
+      
+      let output = '';
+      let errorOutput = '';
+      
+      ffprobeProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+      
+      ffprobeProcess.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+      
+      ffprobeProcess.on('close', (code) => {
+        if (code === 0) {
+          const duration = parseFloat(output.trim());
+          resolve(duration);
+        } else {
+          reject(new Error(`FFprobe failed with code ${code}: ${errorOutput}`));
+        }
+      });
+      
+      ffprobeProcess.on('error', (err) => {
+        reject(new Error(`Failed to start FFprobe process: ${err.message}`));
+      });
+    });
+  }
 }
 
 export async function transcode(inputPath, outputPath, options = {}) {
@@ -464,16 +576,22 @@ export async function transcode(inputPath, outputPath, options = {}) {
             positionFilter = `main_w-overlay_w-${margin}:main_h-overlay_h-${margin}`;
         }
         
-        // Create a simpler filter graph
-        if (opacity < 1) {
-          // Use a direct rectangle overlay approach instead of an image
-          // This is much more reliable and visible
-          const rectFilter = `drawbox=x=${positionFilter.split(':')[0]}:y=${positionFilter.split(':')[1]}:w=300:h=100:color=yellow@${opacity}:t=fill`;
-          videoFilters = [rectFilter];
-        } else {
-          const rectFilter = `drawbox=x=${positionFilter.split(':')[0]}:y=${positionFilter.split(':')[1]}:w=300:h=100:color=yellow:t=fill`;
-          videoFilters = [rectFilter];
-        }
+        // Use complex filter for image watermarks
+        // Add the image as a second input
+        ffmpegArgs.splice(2, 0, '-i', watermark.image);
+        
+        // Use filter_complex instead of vf for multiple inputs
+        const complexFilter = `[0:v][1:v]overlay=${positionFilter}:alpha=${opacity}[out]`;
+        
+        // Remove any existing video filters
+        videoFilters = [];
+        
+        // Add the complex filter
+        ffmpegArgs.push('-filter_complex', complexFilter);
+        ffmpegArgs.push('-map', '[out]');
+        
+        // Set a flag to indicate we're using a complex filter
+        settings.usingComplexFilter = true;
       } else if (watermark.text) {
         // For text watermarks, we'll create a temporary image file with the text
         // This is a workaround for systems where the drawtext filter is not available
@@ -634,14 +752,14 @@ export async function transcode(inputPath, outputPath, options = {}) {
     }
   }
   
-  // Apply video filters if any
-  if (videoFilters.length > 0) {
+  // Apply video filters if any and we're not using a complex filter
+  if (videoFilters.length > 0 && !settings.usingComplexFilter) {
     // Use -vf for all filters now that we're using drawbox instead of overlay
     ffmpegArgs.push('-vf', videoFilters.join(','));
     
     // Log the filter being used for debugging
     console.log(`Using video filter: ${videoFilters.join(',')}`);
-  } else {
+  } else if (videoFilters.length === 0 && !settings.usingComplexFilter) {
     console.log('No video filters applied');
   }
   
@@ -723,19 +841,41 @@ export async function transcode(inputPath, outputPath, options = {}) {
           return reject(new Error('Transcoding failed: Output file was not created'));
         }
         
-        // Generate thumbnails if requested
-        if (thumbnailOptions) {
-          try {
-            const thumbnailDir = path.dirname(outputPath);
-            const thumbnails = await generateThumbnails(inputPath, thumbnailDir, thumbnailOptions);
-            resolve({ outputPath, emitter, thumbnails, ffmpegCommand });
-          } catch (thumbnailError) {
-            // If thumbnail generation fails, still return the transcoded video
-            console.error(`Thumbnail generation failed: ${thumbnailError.message}`);
+        // Extract metadata from the input video
+        try {
+          const metadata = await getVideoMetadata(inputPath);
+          
+          // Generate thumbnails if requested
+          if (thumbnailOptions) {
+            try {
+              const thumbnailDir = path.dirname(outputPath);
+              const thumbnails = await generateThumbnails(inputPath, thumbnailDir, thumbnailOptions);
+              resolve({ outputPath, emitter, thumbnails, ffmpegCommand, metadata });
+            } catch (thumbnailError) {
+              // If thumbnail generation fails, still return the transcoded video
+              console.error(`Thumbnail generation failed: ${thumbnailError.message}`);
+              resolve({ outputPath, emitter, ffmpegCommand, metadata });
+            }
+          } else {
+            resolve({ outputPath, emitter, ffmpegCommand, metadata });
+          }
+        } catch (metadataError) {
+          console.warn(`Warning: Failed to extract metadata: ${metadataError.message}`);
+          
+          // Generate thumbnails if requested
+          if (thumbnailOptions) {
+            try {
+              const thumbnailDir = path.dirname(outputPath);
+              const thumbnails = await generateThumbnails(inputPath, thumbnailDir, thumbnailOptions);
+              resolve({ outputPath, emitter, thumbnails, ffmpegCommand });
+            } catch (thumbnailError) {
+              // If thumbnail generation fails, still return the transcoded video
+              console.error(`Thumbnail generation failed: ${thumbnailError.message}`);
+              resolve({ outputPath, emitter, ffmpegCommand });
+            }
+          } else {
             resolve({ outputPath, emitter, ffmpegCommand });
           }
-        } else {
-          resolve({ outputPath, emitter, ffmpegCommand });
         }
       } else {
         reject(new Error(`FFmpeg transcoding failed with code ${code}: ${errorOutput}`));

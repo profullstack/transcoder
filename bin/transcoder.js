@@ -183,6 +183,14 @@ function formatTime(seconds) {
   return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
+// Format file size in human-readable format
+function formatFileSize(bytes) {
+  if (!bytes || isNaN(bytes)) return '0 B';
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+}
+
 // Parse FFmpeg progress output
 function parseProgress(data) {
   const progressData = {};
@@ -764,6 +772,45 @@ function main() {
           console.log(colors.yellow(filter));
         } else {
           console.log('\nCommand does not include video filters');
+        }
+      }
+      
+      // Display metadata if available
+      if (result.metadata) {
+        console.log('\nVideo Metadata:');
+        
+        // Format metadata
+        if (result.metadata.format) {
+          console.log(colors.green('\nFormat:'));
+          console.log(`  Format: ${colors.yellow(result.metadata.format.formatName || 'Unknown')}`);
+          console.log(`  Duration: ${colors.yellow(formatTime(result.metadata.format.duration || 0))}`);
+          console.log(`  Size: ${colors.yellow(formatFileSize(result.metadata.format.size || 0))}`);
+          console.log(`  Bitrate: ${colors.yellow((result.metadata.format.bitrate / 1000).toFixed(2) + ' kbps' || 'Unknown')}`);
+        }
+        
+        // Video stream metadata
+        if (result.metadata.video && Object.keys(result.metadata.video).length > 0) {
+          console.log(colors.green('\nVideo:'));
+          console.log(`  Codec: ${colors.yellow(result.metadata.video.codec || 'Unknown')}`);
+          console.log(`  Resolution: ${colors.yellow(result.metadata.video.width + 'x' + result.metadata.video.height || 'Unknown')}`);
+          console.log(`  Aspect Ratio: ${colors.yellow(result.metadata.video.aspectRatio || 'Unknown')}`);
+          console.log(`  Frame Rate: ${colors.yellow(result.metadata.video.fps?.toFixed(2) + ' fps' || 'Unknown')}`);
+          console.log(`  Pixel Format: ${colors.yellow(result.metadata.video.pixelFormat || 'Unknown')}`);
+          if (result.metadata.video.bitrate) {
+            console.log(`  Bitrate: ${colors.yellow((result.metadata.video.bitrate / 1000).toFixed(2) + ' kbps' || 'Unknown')}`);
+          }
+        }
+        
+        // Audio stream metadata
+        if (result.metadata.audio && Object.keys(result.metadata.audio).length > 0) {
+          console.log(colors.green('\nAudio:'));
+          console.log(`  Codec: ${colors.yellow(result.metadata.audio.codec || 'Unknown')}`);
+          console.log(`  Sample Rate: ${colors.yellow(result.metadata.audio.sampleRate + ' Hz' || 'Unknown')}`);
+          console.log(`  Channels: ${colors.yellow(result.metadata.audio.channels || 'Unknown')}`);
+          console.log(`  Channel Layout: ${colors.yellow(result.metadata.audio.channelLayout || 'Unknown')}`);
+          if (result.metadata.audio.bitrate) {
+            console.log(`  Bitrate: ${colors.yellow((result.metadata.audio.bitrate / 1000).toFixed(2) + ' kbps' || 'Unknown')}`);
+          }
         }
       }
       

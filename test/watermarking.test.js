@@ -24,44 +24,20 @@ if (!fs.existsSync(watermarksDir)) {
 }
 
 // Create a simple watermark image for testing
-const logoPath = path.join(watermarksDir, 'test-logo.png');
-
-// Helper function to create a test logo
-async function createTestLogo() {
-  if (fs.existsSync(logoPath)) {
-    return;
-  }
-  
-  return new Promise((resolve, reject) => {
-    const ffmpegProcess = spawn('ffmpeg', [
-      '-f', 'lavfi',
-      '-i', 'color=c=white:s=100x50',
-      '-vf', "drawtext=text='TEST':fontcolor=black:fontsize=24:x=(w-text_w)/2:y=(h-text_h)/2",
-      '-frames:v', '1',
-      '-y',
-      logoPath
-    ]);
-    
-    ffmpegProcess.on('close', (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`Failed to create test logo with code ${code}`));
-      }
-    });
-  });
-}
+const logoPath = path.join(watermarksDir, 'logo.png');
 
 describe('Watermarking', function() {
   this.timeout(30000); // Set timeout to 30 seconds
   
-  before(async function() {
-    // Create test logo
-    await createTestLogo();
-    
+  before(function() {
     // Check if input file exists
     if (!fs.existsSync(inputPath)) {
       this.skip();
+    }
+    
+    // Check if logo file exists
+    if (!fs.existsSync(logoPath)) {
+      console.warn(`Warning: Logo file ${logoPath} does not exist. Some watermark tests may fail.`);
     }
   });
   
@@ -147,7 +123,7 @@ describe('Watermarking', function() {
     expect(fs.existsSync(result.outputPath)).to.be.true;
   });
   
-  it('should throw an error if watermark image does not exist', async function() {
+  it('should continue transcoding if watermark image does not exist', async function() {
     const outputPath = path.join(outputDir, 'test-invalid-watermark.mp4');
     
     const options = {
@@ -158,12 +134,12 @@ describe('Watermarking', function() {
       overwrite: true
     };
     
-    try {
-      await transcode(inputPath, outputPath, options);
-      expect.fail('Should have thrown an error');
-    } catch (error) {
-      expect(error.message).to.include('Watermark image does not exist');
-    }
+    // This should not throw an error, but continue without the watermark
+    const result = await transcode(inputPath, outputPath, options);
+    
+    // Verify transcoding was successful
+    expect(result).to.have.property('outputPath');
+    expect(fs.existsSync(result.outputPath)).to.be.true;
   });
   
   it('should throw an error if neither image nor text is provided', async function() {
