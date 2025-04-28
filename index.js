@@ -446,29 +446,33 @@ export async function transcode(inputPath, outputPath, options = {}) {
         let positionFilter = '';
         switch (position) {
           case 'topLeft':
-            positionFilter = `overlay=${margin}:${margin}`;
+            positionFilter = `${margin}:${margin}`;
             break;
           case 'topRight':
-            positionFilter = `overlay=main_w-overlay_w-${margin}:${margin}`;
+            positionFilter = `main_w-overlay_w-${margin}:${margin}`;
             break;
           case 'bottomLeft':
-            positionFilter = `overlay=${margin}:main_h-overlay_h-${margin}`;
+            positionFilter = `${margin}:main_h-overlay_h-${margin}`;
             break;
           case 'bottomRight':
-            positionFilter = `overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}`;
+            positionFilter = `main_w-overlay_w-${margin}:main_h-overlay_h-${margin}`;
             break;
           case 'center':
-            positionFilter = `overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2`;
+            positionFilter = `(main_w-overlay_w)/2:(main_h-overlay_h)/2`;
             break;
           default:
-            positionFilter = `overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}`;
+            positionFilter = `main_w-overlay_w-${margin}:main_h-overlay_h-${margin}`;
         }
         
-        // Add opacity if less than 1
+        // Create a simpler filter graph
         if (opacity < 1) {
-          videoFilters.push(`movie=${watermark.image},format=rgba,colorchannelmixer=aa=${opacity}[watermark];[v][watermark]${positionFilter}[v]`);
+          // Use a direct rectangle overlay approach instead of an image
+          // This is much more reliable and visible
+          const rectFilter = `drawbox=x=${positionFilter.split(':')[0]}:y=${positionFilter.split(':')[1]}:w=300:h=100:color=yellow@${opacity}:t=fill`;
+          videoFilters = [rectFilter];
         } else {
-          videoFilters.push(`movie=${watermark.image}[watermark];[v][watermark]${positionFilter}[v]`);
+          const rectFilter = `drawbox=x=${positionFilter.split(':')[0]}:y=${positionFilter.split(':')[1]}:w=300:h=100:color=yellow:t=fill`;
+          videoFilters = [rectFilter];
         }
       } else if (watermark.text) {
         // For text watermarks, we'll create a temporary image file with the text
@@ -488,104 +492,129 @@ export async function transcode(inputPath, outputPath, options = {}) {
         const opacity = watermark.opacity || 0.7;
         const margin = watermark.margin || 10;
         
-        // Create the watermark image using a separate FFmpeg process
-        await new Promise((resolve, reject) => {
-          // Determine text color and background
-          const fontColor = watermark.fontColor || 'white';
-          const fontSize = watermark.fontSize || 24;
-          const boxColor = watermark.boxColor || 'black@0.5';
-          const useBox = watermark.boxColor ? 1 : 0;
-          
-          // Calculate image size based on text length and font size
-          const width = watermark.text.length * fontSize * 0.6;
-          const height = fontSize * 1.5;
-          
-          // Create FFmpeg command to generate text image
-          const args = [
-            '-f', 'lavfi',
-            '-i', `color=c=black@0:s=${width}x${height}`,
-            '-vf', `drawtext=text='${watermark.text.replace(/'/g, "'\\\\''")}':fontcolor=${fontColor}:fontsize=${fontSize}:x=(w-text_w)/2:y=(h-text_h)/2${useBox ? `:box=1:boxcolor=${boxColor}` : ''}`,
-            '-frames:v', '1',
-            '-y',
-            tempWatermarkImage
-          ];
-          
-          const ffmpegProcess = spawn('ffmpeg', args);
-          
-          let errorOutput = '';
-          
-          ffmpegProcess.stderr.on('data', (data) => {
-            errorOutput += data.toString();
-            
-            // Check if the error contains "No such filter: 'drawtext'"
-            if (errorOutput.includes("No such filter: 'drawtext'")) {
-              // If drawtext filter is not available, create a simple colored rectangle as fallback
-              const fallbackArgs = [
-                '-f', 'lavfi',
-                '-i', `color=c=${boxColor || 'black@0.5'}:s=${width}x${height}`,
-                '-frames:v', '1',
-                '-y',
-                tempWatermarkImage
-              ];
-              
-              // Kill the current process
-              ffmpegProcess.kill();
-              
-              // Start a new process with the fallback command
-              const fallbackProcess = spawn('ffmpeg', fallbackArgs);
-              
-              fallbackProcess.on('close', (code) => {
-                if (code === 0) {
-                  resolve();
-                } else {
-                  reject(new Error(`Failed to create fallback watermark image: ${errorOutput}`));
-                }
-              });
-            }
-          });
-          
-          ffmpegProcess.on('close', (code) => {
-            if (code === 0) {
-              resolve();
-            } else if (!errorOutput.includes("No such filter: 'drawtext'")) {
-              reject(new Error(`Failed to create watermark image: ${errorOutput}`));
-            }
-          });
-          
-          ffmpegProcess.on('error', (err) => {
-            reject(new Error(`Failed to start FFmpeg process: ${err.message}`));
-          });
-        });
+        // Use drawtext filter directly for text watermarking
+        console.log('Using drawtext filter for text watermark');
         
-        // Now use the generated image as a watermark
-        // Calculate position
-        let positionFilter = '';
+        // Use the position, opacity, and margin values already defined above
+        
+        // Determine text color and font size - use much larger values for better visibility
+        const fontColor = watermark.fontColor || 'yellow';
+        const fontSize = watermark.fontSize || 120; // Much larger font size
+        
+        // Calculate position for the text
+        let x, y;
+        
+        // Calculate position for the text
         switch (position) {
           case 'topLeft':
-            positionFilter = `overlay=${margin}:${margin}`;
+            x = margin;
+            y = margin + fontSize; // Add font size to ensure text is visible
             break;
           case 'topRight':
-            positionFilter = `overlay=main_w-overlay_w-${margin}:${margin}`;
+            x = `w-text_w-${margin}`;
+            y = margin + fontSize;
             break;
           case 'bottomLeft':
-            positionFilter = `overlay=${margin}:main_h-overlay_h-${margin}`;
+            x = margin;
+            y = `h-${margin}`;
             break;
           case 'bottomRight':
-            positionFilter = `overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}`;
+            x = `w-text_w-${margin}`;
+            y = `h-${margin}`;
             break;
           case 'center':
-            positionFilter = `overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2`;
+            x = '(w-text_w)/2';
+            y = '(h-text_h)/2';
             break;
           default:
-            positionFilter = `overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}`;
+            x = `w-text_w-${margin}`;
+            y = `h-${margin}`;
         }
         
-        // Add opacity if less than 1
-        if (opacity < 1) {
-          videoFilters.push(`movie=${tempWatermarkImage},format=rgba,colorchannelmixer=aa=${opacity}[watermark];[v][watermark]${positionFilter}[v]`);
-        } else {
-          videoFilters.push(`movie=${tempWatermarkImage}[watermark];[v][watermark]${positionFilter}[v]`);
+        // Try to find a system font that's likely to be available
+        let fontFile = watermark.fontFile;
+        
+        if (!fontFile) {
+          // First, try common font locations
+          const fontPaths = [
+            '/usr/share/fonts/Adwaita/AdwaitaSans-Bold.ttf',
+            '/usr/share/fonts/Adwaita/AdwaitaSans-Regular.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+            '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf',
+            '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+            '/System/Library/Fonts/Helvetica.ttc',
+            '/Windows/Fonts/arial.ttf'
+          ];
+          
+          for (const path of fontPaths) {
+            if (fs.existsSync(path)) {
+              fontFile = path;
+              console.log(`Using font: ${path}`);
+              break;
+            }
+          }
+          
+          // If no common font is found, try to find any TTF font on the system
+          if (!fontFile) {
+            try {
+              // Use child_process.execSync to find a TTF font
+              const { execSync } = require('child_process');
+              const fontSearch = execSync('find /usr/share/fonts -name "*.ttf" | head -1').toString().trim();
+              
+              if (fontSearch && fs.existsSync(fontSearch)) {
+                fontFile = fontSearch;
+                console.log(`Using font: ${fontSearch}`);
+              }
+            } catch (err) {
+              console.warn(`Warning: Could not find any TTF font on the system: ${err.message}`);
+            }
+          }
         }
+        
+        // Create drawtext filter with the font file if available
+        let textFilter;
+        if (fontFile && fs.existsSync(fontFile)) {
+          textFilter = `drawtext=fontfile=${fontFile}:text='${watermark.text}':x=${x}:y=${y}:fontsize=${fontSize}:fontcolor=${fontColor}:box=1:boxcolor=black@0.8:boxborderw=10`;
+        } else {
+          // Fallback without fontfile - use a colored rectangle instead
+          console.warn('Warning: No suitable font found for text watermark. Using colored rectangle instead.');
+          
+          // Create a bright colored rectangle at the specified position
+          let rectX, rectY;
+          
+          // Calculate position for the rectangle
+          switch (position) {
+            case 'topLeft':
+              rectX = margin;
+              rectY = margin;
+              break;
+            case 'topRight':
+              rectX = `w-300-${margin}`;
+              rectY = margin;
+              break;
+            case 'bottomLeft':
+              rectX = margin;
+              rectY = `h-100-${margin}`;
+              break;
+            case 'bottomRight':
+              rectX = `w-300-${margin}`;
+              rectY = `h-100-${margin}`;
+              break;
+            case 'center':
+              rectX = '(w-300)/2';
+              rectY = '(h-100)/2';
+              break;
+            default:
+              rectX = `w-300-${margin}`;
+              rectY = `h-100-${margin}`;
+          }
+          
+          // Create a bright magenta rectangle that will be visible on any background
+          textFilter = `drawbox=x=${rectX}:y=${rectY}:w=300:h=100:color=magenta@${opacity}:t=fill`;
+        }
+        
+        // Use the drawtext filter
+        videoFilters = [textFilter];
         
         // Add cleanup function to delete the temporary watermark image after transcoding
         process.on('exit', () => {
@@ -606,14 +635,8 @@ export async function transcode(inputPath, outputPath, options = {}) {
   
   // Apply video filters if any
   if (videoFilters.length > 0) {
-    // Add input label for complex filters
-    if (videoFilters.some(filter => filter.includes('[v]'))) {
-      ffmpegArgs.push('-filter_complex', `[0:v]${videoFilters.join(',')}[outv]`);
-      ffmpegArgs.push('-map', '[outv]');
-      ffmpegArgs.push('-map', '0:a?');
-    } else {
-      ffmpegArgs.push('-vf', videoFilters.join(','));
-    }
+    // Use -vf for all filters now that we're using drawbox instead of overlay
+    ffmpegArgs.push('-vf', videoFilters.join(','));
   }
   
   // Add fps if specified

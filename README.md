@@ -245,6 +245,7 @@ await transcode('input.mp4', 'output.mp4', {
     position: 'bottomRight',
     fontColor: 'white',
     fontSize: 24,
+    fontFile: '/path/to/your/font.ttf',  // Optional path to a font file
     boxColor: 'black@0.5',   // Optional background box with opacity
     opacity: 0.8
   }
@@ -314,6 +315,7 @@ The CLI tool features a cool progress bar with real-time information:
 | `--watermark-margin` | Margin from the edge in pixels |
 | `--watermark-font-size` | Font size for text watermark in pixels |
 | `--watermark-font-color` | Font color for text watermark |
+| `--watermark-font` | Path to font file for text watermark |
 | `--watermark-box-color` | Background box color for text watermark |
 | `--verbose`, `-v` | Show detailed progress information |
 | `--help`, `-?` | Show help |
@@ -452,7 +454,7 @@ The following options can be customized:
 | margin | number | 10 | Margin from the edge in pixels |
 | fontSize | number | 24 | Font size for text watermark in pixels |
 | fontColor | string | 'white' | Font color for text watermark |
-| fontFile | string | - | Path to font file for text watermark |
+| fontFile | string | - | Path to font file for text watermark (if not specified, will try to find a system font) |
 | boxColor | string | - | Background box color for text watermark (e.g., "black@0.5" for semi-transparent black) |
 
 **Note:** When using a platform preset, the `preset` option refers to the platform name (e.g., 'instagram'). The FFmpeg encoding preset (e.g., 'medium', 'slow') is still configurable but is included in each platform preset with appropriate values.

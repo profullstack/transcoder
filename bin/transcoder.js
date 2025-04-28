@@ -117,26 +117,31 @@ const argv = yargs(hideBin(process.argv))
   .option('watermark-opacity', {
     describe: 'Opacity of the watermark (0.0 to 1.0)',
     type: 'number',
-    default: 0.7
+    default: 1.0
   })
   .option('watermark-margin', {
     describe: 'Margin from the edge in pixels',
     type: 'number',
-    default: 10
+    default: 20
   })
   .option('watermark-font-size', {
     describe: 'Font size for text watermark in pixels',
     type: 'number',
-    default: 24
+    default: 72
   })
   .option('watermark-font-color', {
     describe: 'Font color for text watermark',
     type: 'string',
-    default: 'white'
+    default: 'yellow'
+  })
+  .option('watermark-font', {
+    describe: 'Path to font file for text watermark (if not specified, will try to find a system font)',
+    type: 'string'
   })
   .option('watermark-box-color', {
-    describe: 'Background box color for text watermark (e.g., "black@0.5" for semi-transparent black)',
-    type: 'string'
+    describe: 'Background box color for text watermark (e.g., "black@0.9" for nearly opaque black)',
+    type: 'string',
+    default: 'black@0.9'
   })
   
   // Trim options
@@ -709,6 +714,10 @@ function main() {
       
       if (argv.watermarkBoxColor) {
         options.watermark.boxColor = argv.watermarkBoxColor;
+      }
+      
+      if (argv.watermarkFont) {
+        options.watermark.fontFile = argv.watermarkFont;
       }
     }
   }
