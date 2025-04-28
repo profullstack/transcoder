@@ -1,6 +1,6 @@
 {
   "name": "@profullstack/transcoder",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A server-side module for transcoding videos to web-friendly MP4 format using FFmpeg",
   "type": "module",
   "main": "index.js",
