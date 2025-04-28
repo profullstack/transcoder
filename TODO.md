@@ -167,7 +167,7 @@ transcoder input.mp4 output.mp4 --preset youtube-hd --thumbnails 3
 
 1. ✅ Smart Presets (High impact, low effort) - IMPLEMENTED
 2. ✅ Thumbnail Generation (High demand, moderate effort) - IMPLEMENTED
-3. Batch Processing (High utility, low effort)
+3. ⏳ Batch Processing (High utility, low effort) - IN PROGRESS
 4. Metadata Extraction (Low effort, high value)
 5. CLI Tool (Expands user base, moderate effort)
 

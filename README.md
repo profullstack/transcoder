@@ -17,11 +17,11 @@ A lightweight Node.js module for transcoding videos to web-friendly MP4 format u
 
 ## Prerequisites
 
-This module requires FFmpeg to be installed on your system. You can download it from [ffmpeg.org](https://ffmpeg.org/download.html) or install it using your system's package manager.
+This module requires FFmpeg and ffprobe to be installed on your system. You can download them from [ffmpeg.org](https://ffmpeg.org/download.html) or build them from source.
 
-### Installing FFmpeg
+### Building FFmpeg from Source
 
-The package includes a script to automatically install FFmpeg on various operating systems:
+The package includes a script to automatically build FFmpeg from source with custom flags optimized for video transcoding and thumbnail generation:
 
 ```bash
 # Using npm
@@ -37,11 +37,35 @@ pnpm install-ffmpeg
 ./bin/build-ffmpeg.sh
 ```
 
+The build script:
+- Builds FFmpeg from source with optimized flags
+- Enables all necessary codecs and libraries for maximum compatibility
+- Includes support for ffprobe and thumbnail generation
+- Installs all required dependencies
+
 The script supports:
-- **macOS** (using Homebrew)
-- **Ubuntu/Debian** (using apt)
-- **Arch Linux** (using pacman)
-- **Windows** (using Chocolatey or Scoop)
+- **macOS**
+- **Ubuntu/Debian**
+- **Arch Linux**
+- **Windows** (via WSL - Windows Subsystem for Linux)
+
+If you already have FFmpeg installed but need to rebuild it (for example, if thumbnail generation is not working), you can use the `--force` flag:
+
+```bash
+# Force rebuild of FFmpeg from source
+pnpm install-ffmpeg -- --force
+
+# Or directly
+./bin/build-ffmpeg.sh --force
+```
+
+The custom build includes support for:
+- H.264/H.265 encoding and decoding
+- AAC, MP3, and Opus audio codecs
+- VP8/VP9 video codecs
+- Hardware acceleration (when available)
+- Rubberband library (required for ffprobe and thumbnail generation)
+- And many other optimizations for video processing
 
 If you prefer to install FFmpeg manually:
 

@@ -9,6 +9,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 pnpm-lock.yaml
+ffmpeg_build/
 
 # Environment variables
 .env
