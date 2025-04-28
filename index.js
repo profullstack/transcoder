@@ -30,7 +30,8 @@ export const DEFAULT_OPTIONS = {
   movflags: '+faststart',    // Optimize for web streaming
   threads: 0,                // Use all available CPU cores
   overwrite: false,          // Don't overwrite existing files by default
-  watermark: null            // No watermark by default
+  watermark: null,           // No watermark by default
+  trim: null                 // No trimming by default
 };
 
 /**
@@ -463,6 +464,10 @@ export async function transcode(inputPath, outputPath, options = {}) {
   const thumbnailOptions = settings.thumbnails;
   delete settings.thumbnails;
   
+  // Extract trim option if present
+  const trimOptions = settings.trim;
+  delete settings.trim;
+  
   // Validate input and output paths
   if (!inputPath || typeof inputPath !== 'string') {
     throw new Error('Input path is required and must be a string');
@@ -502,8 +507,18 @@ export async function transcode(inputPath, outputPath, options = {}) {
   // Build ffmpeg arguments
   const ffmpegArgs = [];
   
+  // Add trim start time if specified (before input for faster seeking)
+  if (trimOptions && trimOptions.start) {
+    ffmpegArgs.push('-ss', trimOptions.start);
+  }
+  
   // Add input file
   ffmpegArgs.push('-i', inputPath);
+  
+  // Add trim end time if specified (after input)
+  if (trimOptions && trimOptions.end) {
+    ffmpegArgs.push('-to', trimOptions.end);
+  }
   
   // Add video codec
   ffmpegArgs.push('-c:v', settings.videoCodec);

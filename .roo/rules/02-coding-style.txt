@@ -1,0 +1,33 @@
+Coding Style Guidelines
+
+Indentation:
+- Use 2 spaces for indentation, not tabs
+- Maintain consistent indentation throughout the codebase
+
+Naming Conventions:
+- Use camelCase for variables and functions
+- Use PascalCase for classes and components
+- Use UPPER_CASE for constants
+
+Formatting:
+- Keep line length under 100 characters
+- Use semicolons at the end of statements
+- Place opening braces on the same line as the statement
+- Add spaces around operators
+
+Comments:
+- Use JSDoc style comments for functions
+- Keep comments up-to-date with code changes
+- Comment complex logic, not obvious operations
+
+JavaScript/TypeScript Specific:
+- Prefer const over let, avoid var
+- Use template literals instead of string concatenation
+- Use destructuring where appropriate
+- Use async/await instead of raw promises when possible
+
+HTML/CSS Specific:
+- Use semantic HTML elements
+- Follow BEM naming convention for CSS classes
+- Organize CSS properties alphabetically
+- Use CSS variables for repeated values
