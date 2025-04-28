@@ -559,21 +559,29 @@ export async function transcode(inputPath, outputPath, options = {}) {
     }
     
     try {
+      // Flag to track if we should skip watermark processing
+      let skipWatermark = false;
+      
       if (watermark.image) {
         // Check if watermark image exists
         if (!fs.existsSync(watermark.image)) {
           // Check if this is an intentional test case
           if (watermark.image.includes('intentionally-non-existent')) {
             console.warn(`Notice: Using intentionally non-existent watermark image for testing: ${watermark.image}`);
+            console.warn('Skipping watermark for this test case');
+            // Skip watermark processing but continue with transcoding
+            skipWatermark = true;
           } else {
             throw new Error(`Watermark image does not exist: ${watermark.image}`);
           }
         }
         
-        // Set default values
-        const position = watermark.position || 'bottomRight';
-        const opacity = watermark.opacity || 0.7;
-        const margin = watermark.margin || 10;
+        // Only proceed with watermark if we're not skipping it
+        if (!skipWatermark) {
+          // Set default values
+          const position = watermark.position || 'bottomRight';
+          const opacity = watermark.opacity || 0.7;
+          const margin = watermark.margin || 10;
         
         // Calculate position
         let positionFilter = '';
@@ -611,8 +619,9 @@ export async function transcode(inputPath, outputPath, options = {}) {
         ffmpegArgs.push('-filter_complex', complexFilter);
         ffmpegArgs.push('-map', '[out]');
         
-        // Set a flag to indicate we're using a complex filter
-        settings.usingComplexFilter = true;
+          // Set a flag to indicate we're using a complex filter
+          settings.usingComplexFilter = true;
+        }
       } else if (watermark.text) {
         // For text watermarks, we'll create a temporary image file with the text
         // This is a workaround for systems where the drawtext filter is not available

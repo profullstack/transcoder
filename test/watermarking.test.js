@@ -170,6 +170,11 @@ describe('Watermarking', function() {
   it('should continue transcoding if watermark image does not exist', async function() {
     const outputPath = path.join(outputDir, 'test-invalid-watermark.mp4');
     
+    // Delete the output file if it already exists
+    if (fs.existsSync(outputPath)) {
+      fs.unlinkSync(outputPath);
+    }
+    
     const options = {
       watermark: {
         // Use a path that clearly indicates this is an intentionally non-existent file
@@ -179,12 +184,18 @@ describe('Watermarking', function() {
       overwrite: true
     };
     
-    // This should not throw an error, but continue without the watermark
-    const result = await transcode(inputPath, outputPath, options);
-    
-    // Verify transcoding was successful
-    expect(result).to.have.property('outputPath');
-    expect(fs.existsSync(result.outputPath)).to.be.true;
+    try {
+      // This should not throw an error, but continue without the watermark
+      const result = await transcode(inputPath, outputPath, options);
+      
+      // Verify transcoding was successful
+      expect(result).to.have.property('outputPath');
+      expect(fs.existsSync(result.outputPath)).to.be.true;
+    } catch (error) {
+      // If there's an error, it should not be about the watermark
+      expect(error.message).to.not.include('Watermark image does not exist');
+      throw error; // Re-throw the error if it's not about the watermark
+    }
   });
   
   it('should throw an error if neither image nor text is provided', async function() {
