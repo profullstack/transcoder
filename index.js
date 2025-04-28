@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { getPreset, PRESETS } from './presets.js';
+import { promisify } from 'util';
 
 /**
  * Default transcoding options for web-friendly MP4 format
@@ -118,6 +119,207 @@ function parseProgress(data) {
  * @param {Object} [options={}] - Transcoding options
  * @returns {Promise<Object>} - Promise that resolves with the output path and emitter
  */
+/**
+ * Generates thumbnails from a video file
+ *
+ * @param {string} inputPath - Path to the input video file
+ * @param {string} outputDir - Directory where thumbnails will be saved
+ * @param {Object} options - Thumbnail generation options
+ * @param {number} options.count - Number of thumbnails to generate
+ * @param {string} options.format - Image format (jpg, png)
+ * @param {string} options.filenamePattern - Pattern for thumbnail filenames (default: thumbnail-%03d)
+ * @param {boolean} options.timestamps - Whether to use specific timestamps instead of intervals
+ * @param {Array<string>} options.timestampList - List of timestamps (only used if timestamps is true)
+ * @returns {Promise<Array<string>>} - Promise that resolves with an array of thumbnail paths
+ */
+export async function generateThumbnails(inputPath, outputDir, options) {
+  // Default options
+  const settings = {
+    count: 3,
+    format: 'jpg',
+    filenamePattern: 'thumbnail-%03d',
+    timestamps: false,
+    timestampList: [],
+    ...options
+  };
+  
+  // Validate input path
+  if (!inputPath || typeof inputPath !== 'string') {
+    throw new Error('Input path is required and must be a string');
+  }
+  
+  // Check if input file exists
+  if (!fs.existsSync(inputPath)) {
+    throw new Error(`Input file does not exist: ${inputPath}`);
+  }
+  
+  // Ensure output directory exists
+  if (!fs.existsSync(outputDir)) {
+    try {
+      fs.mkdirSync(outputDir, { recursive: true });
+    } catch (err) {
+      throw new Error(`Failed to create output directory: ${err.message}`);
+    }
+  }
+  
+  // Check if ffmpeg is installed
+  try {
+    await checkFfmpeg();
+  } catch (error) {
+    throw error;
+  }
+  
+  // Get video duration to calculate thumbnail positions
+  const duration = await getVideoDuration(inputPath);
+  
+  // Build ffmpeg arguments
+  const ffmpegArgs = [];
+  
+  // Add input file
+  ffmpegArgs.push('-i', inputPath);
+  
+  // Disable audio
+  ffmpegArgs.push('-an');
+  
+  // Set output quality
+  ffmpegArgs.push('-q:v', '2');
+  
+  // Set output format
+  ffmpegArgs.push('-f', 'image2');
+  
+  // Generate thumbnails based on timestamps or intervals
+  const thumbnailPaths = [];
+  
+  if (settings.timestamps && settings.timestampList.length > 0) {
+    // Use specific timestamps
+    for (let i = 0; i < settings.timestampList.length; i++) {
+      const timestamp = settings.timestampList[i];
+      const outputPath = path.join(outputDir, `${settings.filenamePattern.replace(/%\d*d/, i + 1)}.${settings.format}`);
+      thumbnailPaths.push(outputPath);
+      
+      // Create a separate ffmpeg command for each timestamp
+      await new Promise((resolve, reject) => {
+        const args = [
+          '-ss', timestamp,
+          '-i', inputPath,
+          '-vframes', '1',
+          '-an',
+          '-q:v', '2',
+          '-f', 'image2',
+          outputPath
+        ];
+        
+        const ffmpegProcess = spawn('ffmpeg', args);
+        
+        let errorOutput = '';
+        
+        ffmpegProcess.stderr.on('data', (data) => {
+          errorOutput += data.toString();
+        });
+        
+        ffmpegProcess.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`FFmpeg thumbnail generation failed with code ${code}: ${errorOutput}`));
+          }
+        });
+        
+        ffmpegProcess.on('error', (err) => {
+          reject(new Error(`Failed to start FFmpeg process: ${err.message}`));
+        });
+      });
+    }
+  } else {
+    // Calculate intervals based on count
+    const interval = duration / (settings.count + 1);
+    
+    for (let i = 0; i < settings.count; i++) {
+      const time = interval * (i + 1);
+      const outputPath = path.join(outputDir, `${settings.filenamePattern.replace(/%\d*d/, i + 1)}.${settings.format}`);
+      thumbnailPaths.push(outputPath);
+      
+      // Create a separate ffmpeg command for each interval
+      await new Promise((resolve, reject) => {
+        const args = [
+          '-ss', time.toString(),
+          '-i', inputPath,
+          '-vframes', '1',
+          '-an',
+          '-q:v', '2',
+          '-f', 'image2',
+          outputPath
+        ];
+        
+        const ffmpegProcess = spawn('ffmpeg', args);
+        
+        let errorOutput = '';
+        
+        ffmpegProcess.stderr.on('data', (data) => {
+          errorOutput += data.toString();
+        });
+        
+        ffmpegProcess.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`FFmpeg thumbnail generation failed with code ${code}: ${errorOutput}`));
+          }
+        });
+        
+        ffmpegProcess.on('error', (err) => {
+          reject(new Error(`Failed to start FFmpeg process: ${err.message}`));
+        });
+      });
+    }
+  }
+  
+  return thumbnailPaths;
+}
+
+/**
+ * Gets the duration of a video file in seconds
+ *
+ * @param {string} inputPath - Path to the video file
+ * @returns {Promise<number>} - Promise that resolves with the duration in seconds
+ */
+async function getVideoDuration(inputPath) {
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-v', 'error',
+      '-show_entries', 'format=duration',
+      '-of', 'default=noprint_wrappers=1:nokey=1',
+      inputPath
+    ];
+    
+    const ffprobeProcess = spawn('ffprobe', args);
+    
+    let output = '';
+    let errorOutput = '';
+    
+    ffprobeProcess.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    ffprobeProcess.stderr.on('data', (data) => {
+      errorOutput += data.toString();
+    });
+    
+    ffprobeProcess.on('close', (code) => {
+      if (code === 0) {
+        const duration = parseFloat(output.trim());
+        resolve(duration);
+      } else {
+        reject(new Error(`FFprobe failed with code ${code}: ${errorOutput}`));
+      }
+    });
+    
+    ffprobeProcess.on('error', (err) => {
+      reject(new Error(`Failed to start FFprobe process: ${err.message}`));
+    });
+  });
+}
+
 export async function transcode(inputPath, outputPath, options = {}) {
   // Create an emitter for progress events
   const emitter = new TranscodeEmitter();
@@ -143,6 +345,10 @@ export async function transcode(inputPath, outputPath, options = {}) {
   
   // Merge default options with user options (including preset if applicable)
   const settings = { ...DEFAULT_OPTIONS, ...mergedOptions };
+  
+  // Extract thumbnails option if present
+  const thumbnailOptions = settings.thumbnails;
+  delete settings.thumbnails;
   
   // Validate input and output paths
   if (!inputPath || typeof inputPath !== 'string') {
@@ -279,14 +485,27 @@ export async function transcode(inputPath, outputPath, options = {}) {
     });
     
     // Handle process exit
-    ffmpegProcess.on('close', (code) => {
+    ffmpegProcess.on('close', async (code) => {
       if (code === 0) {
         // Check if output file was created
         if (!fs.existsSync(outputPath)) {
           return reject(new Error('Transcoding failed: Output file was not created'));
         }
         
-        resolve({ outputPath, emitter });
+        // Generate thumbnails if requested
+        if (thumbnailOptions) {
+          try {
+            const thumbnailDir = path.dirname(outputPath);
+            const thumbnails = await generateThumbnails(inputPath, thumbnailDir, thumbnailOptions);
+            resolve({ outputPath, emitter, thumbnails });
+          } catch (thumbnailError) {
+            // If thumbnail generation fails, still return the transcoded video
+            console.error(`Thumbnail generation failed: ${thumbnailError.message}`);
+            resolve({ outputPath, emitter });
+          }
+        } else {
+          resolve({ outputPath, emitter });
+        }
       } else {
         reject(new Error(`FFmpeg transcoding failed with code ${code}: ${errorOutput}`));
       }
@@ -346,6 +565,29 @@ export async function transcode(inputPath, outputPath, options = {}) {
  * await transcode('input.mp4', 'twitter-output.mp4', {
  *   preset: 'twitter',
  *   videoBitrate: '6000k' // Override the preset's videoBitrate
+ * });
+ * ```
+ *
+ * Example usage with thumbnail generation:
+ *
+ * ```javascript
+ * import { transcode } from '@profullstack/transcoder';
+ *
+ * // Generate 5 thumbnails at equal intervals
+ * const { outputPath, thumbnails } = await transcode('input.mp4', 'output.mp4', {
+ *   thumbnails: { count: 5, format: 'jpg' }
+ * });
+ *
+ * console.log('Video transcoded to:', outputPath);
+ * console.log('Thumbnails generated:', thumbnails);
+ *
+ * // Generate thumbnails at specific timestamps
+ * const { outputPath, thumbnails } = await transcode('input.mp4', 'output.mp4', {
+ *   thumbnails: {
+ *     timestamps: true,
+ *     timestampList: ['00:00:10', '00:00:30', '00:01:15'],
+ *     format: 'png'
+ *   }
  * });
  * ```
  *

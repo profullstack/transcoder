@@ -18,6 +18,7 @@
     "generate-test-video": "node scripts/generate-test-video.js",
     "example": "node examples/basic-usage.js",
     "example:presets": "node examples/smart-presets.js",
+    "example:thumbnails": "node examples/thumbnail-generation.js",
     "install-ffmpeg": "./bin/build-ffmpeg.sh"
   },
   "bin": {

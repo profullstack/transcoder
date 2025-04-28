@@ -11,6 +11,7 @@ A lightweight Node.js module for transcoding videos to web-friendly MP4 format u
 - Event-based progress tracking
 - Customizable encoding options
 - Smart Presets for popular platforms (Instagram, YouTube, Twitter, etc.)
+- Thumbnail Generation at specified intervals or timestamps
 - No file storage - just passes through to FFmpeg
 - Lightweight with minimal dependencies
 
@@ -208,6 +209,33 @@ Transcodes a video file to web-friendly MP4 format.
 - `outputPath` (string): Path where the transcoded video will be saved
 - `options` (object, optional): Transcoding options or preset name
   - Can include a `preset` property with one of the predefined platform presets
+  - Can include a `thumbnails` property for generating thumbnails during transcoding
+
+**Returns:**
+
+- Promise that resolves with an object containing:
+  - `outputPath` (string): Path to the transcoded video
+  - `emitter` (TranscodeEmitter): Event emitter for progress tracking
+  - `thumbnails` (Array, optional): Array of thumbnail paths if thumbnails were requested
+
+### generateThumbnails(inputPath, outputDir, [options])
+
+Generates thumbnails from a video file without transcoding.
+
+**Parameters:**
+
+- `inputPath` (string): Path to the input video file
+- `outputDir` (string): Directory where thumbnails will be saved
+- `options` (object, optional): Thumbnail generation options
+  - `count` (number, default: 3): Number of thumbnails to generate
+  - `format` (string, default: 'jpg'): Image format ('jpg' or 'png')
+  - `filenamePattern` (string, default: 'thumbnail-%03d'): Pattern for thumbnail filenames
+  - `timestamps` (boolean, default: false): Whether to use specific timestamps instead of intervals
+  - `timestampList` (Array<string>, default: []): List of timestamps (only used if timestamps is true)
+
+**Returns:**
+
+- Promise that resolves with an array of thumbnail paths
 
 **Returns:**
 
@@ -237,6 +265,7 @@ The following options can be customized:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | preset | string | - | Platform preset name (e.g., 'instagram', 'youtube-hd', 'twitter') |
+| thumbnails | object | - | Thumbnail generation options (see below) |
 | videoCodec | string | 'libx264' | Video codec to use |
 | audioCodec | string | 'aac' | Audio codec to use |
 | videoBitrate | string | '1500k' | Video bitrate |
@@ -251,6 +280,16 @@ The following options can be customized:
 | movflags | string | '+faststart' | MP4 container flags |
 | threads | number | 0 | Number of threads to use (0 = auto) |
 | overwrite | boolean | false | Whether to overwrite existing output file |
+
+**Thumbnail Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| count | number | 3 | Number of thumbnails to generate |
+| format | string | 'jpg' | Image format ('jpg' or 'png') |
+| filenamePattern | string | 'thumbnail-%03d' | Pattern for thumbnail filenames |
+| timestamps | boolean | false | Whether to use specific timestamps instead of intervals |
+| timestampList | Array<string> | [] | List of timestamps (only used if timestamps is true) |
 
 **Note:** When using a platform preset, the `preset` option refers to the platform name (e.g., 'instagram'). The FFmpeg encoding preset (e.g., 'medium', 'slow') is still configurable but is included in each platform preset with appropriate values.
 
@@ -273,6 +312,9 @@ pnpm example
 
 # Run the Smart Presets example
 pnpm example:presets
+
+# Run the Thumbnail Generation example
+pnpm example:thumbnails
 ```
 
 This will:
@@ -292,8 +334,9 @@ pnpm test
 The module includes the following test files:
 - `test/transcode.test.js` - Tests for the core transcoding functionality
 - `test/presets.test.js` - Tests for the Smart Presets feature
+- `test/thumbnails.test.js` - Tests for the Thumbnail Generation feature
 
-These tests verify the core functionality of the module, including error handling, option processing, and preset handling.
+These tests verify the core functionality of the module, including error handling, option processing, preset handling, and thumbnail generation.
 
 ## License
 
