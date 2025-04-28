@@ -1,0 +1,44 @@
+{
+  "name": "@profullstack/transcoder",
+  "version": "1.0.0",
+  "description": "A server-side module for transcoding videos to web-friendly MP4 format using FFmpeg",
+  "type": "module",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/profullstack/transcode.git"
+  },
+  "scripts": {
+    "test": "mocha test/**/*.test.js",
+    "generate-test-video": "node scripts/generate-test-video.js",
+    "example": "node examples/basic-usage.js",
+    "install-ffmpeg": "./bin/build-ffmpeg.sh"
+  },
+  "bin": {
+    "install-ffmpeg": "./bin/build-ffmpeg.sh"
+  },
+  "keywords": [
+    "ffmpeg",
+    "video",
+    "transcode",
+    "mp4",
+    "h264",
+    "browser-compatible",
+    "streaming"
+  ],
+  "author": "ProFullStack",
+  "license": "MIT",
+  "packageManager": "pnpm@10.6.5",
+  "dependencies": {},
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
