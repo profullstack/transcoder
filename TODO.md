@@ -167,8 +167,8 @@ transcoder input.mp4 output.mp4 --preset youtube-hd --thumbnails 3
 
 1. ✅ Smart Presets (High impact, low effort) - IMPLEMENTED
 2. ✅ Thumbnail Generation (High demand, moderate effort) - IMPLEMENTED
-3. ⏳ Batch Processing (High utility, low effort) - IN PROGRESS
+3. Batch Processing (High utility, low effort)
 4. Metadata Extraction (Low effort, high value)
-5. CLI Tool (Expands user base, moderate effort)
+5. ✅ CLI Tool (Expands user base, moderate effort) - IMPLEMENTED
 
 These features will significantly enhance the value proposition of @profullstack/transcoder while maintaining its core philosophy of simplicity and efficiency.

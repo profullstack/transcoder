@@ -221,6 +221,93 @@ await transcode('input.mp4', 'output.mp4', {
 });
 ```
 
+### Using the CLI Tool
+
+The module includes a command-line interface (CLI) for easy video transcoding and thumbnail generation directly from your terminal:
+
+```bash
+# Basic usage
+transcoder input.mp4 output.mp4
+
+# Using a preset
+transcoder input.mp4 output.mp4 --preset youtube-hd
+
+# Generate thumbnails during transcoding
+transcoder input.mp4 output.mp4 --thumbnails 3
+
+# Generate thumbnails without transcoding
+transcoder --thumbnails-only input.mp4 --count 5
+
+# Customize video settings
+transcoder input.mp4 output.mp4 --width 1280 --height 720 --bitrate 2M
+
+# Trim a video
+transcoder input.mp4 output.mp4 --trim --start 00:00:10 --end 00:00:30
+```
+
+The CLI tool features a cool progress bar with real-time information:
+
+![Progress Bar](https://example.com/progress-bar.png)
+
+- Colorful progress visualization
+- Percentage completion
+- Current FPS (frames per second)
+- Elapsed time
+- Estimated time remaining (ETA)
+- Fast and efficient thumbnail generation
+
+#### CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `--preset`, `-p` | Use a predefined preset (e.g., youtube-hd, twitter, instagram) |
+| `--width`, `-w` | Output video width |
+| `--height`, `-h` | Output video height |
+| `--bitrate`, `-b` | Output video bitrate (e.g., 1M, 5M) |
+| `--fps`, `-f` | Output video frame rate |
+| `--codec`, `-c` | Video codec to use (e.g., h264, h265) |
+| `--audio-codec`, `-a` | Audio codec to use (e.g., aac, mp3) |
+| `--audio-bitrate` | Audio bitrate (e.g., 128k, 256k) |
+| `--thumbnails`, `-t` | Number of thumbnails to generate during transcoding |
+| `--thumbnails-only` | Generate thumbnails without transcoding |
+| `--count` | Number of thumbnails to generate (for thumbnails-only mode) |
+| `--format` | Thumbnail format (jpg or png) |
+| `--timestamps` | Specific timestamps for thumbnails (comma-separated, in seconds or HH:MM:SS format) |
+| `--thumbnail-output` | Output pattern for thumbnails (e.g., "thumb-%d.jpg") |
+| `--trim` | Enable video trimming |
+| `--start` | Start time for trimming (in seconds or HH:MM:SS format) |
+| `--end` | End time for trimming (in seconds or HH:MM:SS format) |
+| `--verbose`, `-v` | Show detailed progress information |
+| `--help`, `-?` | Show help |
+
+#### Installation
+
+The CLI tool is automatically installed when you install the package:
+
+```bash
+# Install globally
+npm install -g @profullstack/transcoder
+
+# Now you can use the 'transcoder' command from anywhere
+transcoder input.mp4 output.mp4 --preset youtube-hd
+
+# Or use npx without installing
+npx @profullstack/transcoder input.mp4 output.mp4 --preset youtube-hd
+```
+
+When installed globally, you can use the `transcoder` command from any directory:
+
+```bash
+# Basic usage
+transcoder input.mp4 output.mp4
+
+# With options
+transcoder input.mp4 output.mp4 --preset youtube-hd --thumbnails 3
+
+# Generate thumbnails only
+transcoder --thumbnails-only input.mp4 --count 5
+```
+
 ## API Reference
 
 ### transcode(inputPath, outputPath, [options])
