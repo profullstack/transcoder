@@ -4,7 +4,7 @@ This document outlines potential features to enhance the @profullstack/transcode
 
 ## High-Impact, Easy-to-Implement Features
 
-### 1. ✂️ Video Trimming & Clipping
+### 1. ✂️ Video Trimming & Clipping (Not Implemented)
 
 **What**: Extract specific segments from videos without re-encoding the entire file.
 
@@ -17,7 +17,7 @@ await transcode('input.mp4', 'output.mp4', {
 });
 ```
 
-### 2. 📊 Metadata Extraction & Preservation
+### 2. 📊 Metadata Extraction & Preservation ✅ (IMPLEMENTED)
 
 **What**: Extract and preserve video metadata during transcoding.
 
@@ -29,7 +29,7 @@ const { outputPath, metadata } = await transcode('input.mp4', 'output.mp4');
 console.log(metadata.duration, metadata.resolution, metadata.codec);
 ```
 
-### 3. 🔄 Batch Processing
+### 3. 🔄 Batch Processing (Not Implemented)
 
 **What**: Process multiple videos with a single command.
 
@@ -44,7 +44,7 @@ const results = await transcodeBatch([
 ]);
 ```
 
-### 4. 💧 Watermarking
+### 4. 💧 Watermarking ✅ (IMPLEMENTED)
 
 **What**: Add text or image watermarks to videos.
 
@@ -57,7 +57,7 @@ await transcode('input.mp4', 'output.mp4', {
 });
 ```
 
-### 5. 🔊 Audio Enhancement
+### 5. 🔊 Audio Enhancement (Not Implemented)
 
 **What**: Normalize audio levels, reduce noise, and enhance clarity.
 
@@ -70,7 +70,7 @@ await transcode('input.mp4', 'output.mp4', {
 });
 ```
 
-### 6. 📱 Responsive Video Profiles
+### 6. 📱 Responsive Video Profiles (Not Implemented)
 
 **What**: Generate multiple versions of a video optimized for different devices and connection speeds.
 
@@ -84,7 +84,7 @@ await transcode('input.mp4', {
 });
 ```
 
-### 7. 📈 Progress Visualization
+### 7. 📈 Progress Visualization (Not Implemented)
 
 **What**: Web-based UI for monitoring transcoding progress.
 
@@ -98,7 +98,7 @@ const { outputPath, dashboardUrl } = await transcode('input.mp4', 'output.mp4', 
 // Open dashboardUrl in a browser to see progress
 ```
 
-### 8. 🌐 CLI Tool
+### 8. 🌐 CLI Tool ✅ (IMPLEMENTED)
 
 **What**: Command-line interface for the module.
 
@@ -200,15 +200,18 @@ const results = await transcodeImageBatch([
 
 ---
 
-## Implementation Priority
+## Implementation Status
 
-1. ✅ Smart Presets (High impact, low effort) - IMPLEMENTED
-2. ✅ Thumbnail Generation (High demand, moderate effort) - IMPLEMENTED
-3. ✅ Watermarking (High value, moderate effort) - IMPLEMENTED
-4. Batch Processing (High utility, low effort)
-5. ✅ Metadata Extraction (Low effort, high value) - IMPLEMENTED
-6. ✅ CLI Tool (Expands user base, moderate effort) - IMPLEMENTED
-7. Audio Transcoding (Expands functionality, moderate effort)
-8. Image Transcoding (Expands functionality, moderate effort)
+### Completed Features ✅
+1. ✅ Smart Presets (High impact, low effort)
+2. ✅ Thumbnail Generation (High demand, moderate effort)
+3. ✅ Watermarking (High value, moderate effort)
+4. ✅ Metadata Extraction (Low effort, high value)
+5. ✅ CLI Tool (Expands user base, moderate effort)
+
+### Next Features to Implement
+1. 🔄 Batch Processing (High utility, low effort) - NEXT PRIORITY
+2. 🔊 Audio Transcoding (Expands functionality, moderate effort)
+3. 🖼️ Image Transcoding (Expands functionality, moderate effort)
 
 These features will significantly enhance the value proposition of @profullstack/transcoder while maintaining its core philosophy of simplicity and efficiency.

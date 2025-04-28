@@ -2,6 +2,14 @@
 
 A lightweight Node.js module for transcoding videos to web-friendly MP4 format using FFmpeg. This module is designed for server-side use and ensures compatibility with all modern browsers including Safari, Chrome, and Firefox on both desktop and mobile devices.
 
+[![GitHub](https://img.shields.io/github/license/profullstack/transcoder)](https://github.com/profullstack/transcoder/blob/master/LICENSE)
+[![GitHub commit activity](https://img.shields.io/github/commit-activity/m/profullstack/transcoder)](https://github.com/profullstack/transcoder/pulse)
+[![GitHub last commit](https://img.shields.io/github/last-commit/profullstack/transcoder)](https://github.com/profullstack/transcoder/commits/master)
+
+[![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=fff&style=for-the-badge)](https://github.com/profullstack/transcoder)
+[![macOS](https://img.shields.io/badge/macOS-000000?logo=macos&logoColor=fff&style=for-the-badge)](https://github.com/profullstack/transcoder)
+[![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=000&style=for-the-badge)](https://github.com/profullstack/transcoder)
+
 ## Features
 
 - Transcodes any video format to web-friendly MP4 (H.264/AAC)
