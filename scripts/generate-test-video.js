@@ -38,15 +38,15 @@ const testMp4Path = path.join(outputDir, 'test-video.mp4');
 console.log('Generating 5-second test video...');
 
 // Generate a test video using FFmpeg
-// This creates a tiny 2-second video with a color gradient
+// This creates a tiny 5-second video with a color gradient
 const ffmpegArgs = [
   '-f', 'lavfi',                                // Use the lavfi input virtual device
-  '-i', 'testsrc=duration=2:size=320x240:rate=15', // Generate a test pattern for 2 seconds at very low resolution
+  '-i', 'testsrc=duration=5:size=320x240:rate=15', // Generate a test pattern for 5 seconds at very low resolution
   '-c:v', 'libx264',                            // Use H.264 codec (much faster than qtrle)
   '-crf', '30',                                 // High compression (lower quality)
   '-preset', 'ultrafast',                       // Fastest encoding
   '-pix_fmt', 'yuv420p',                        // Standard pixel format
-  '-t', '2',                                    // Limit to 2 seconds
+  '-t', '5',                                    // Limit to 5 seconds
   '-an',                                        // No audio
   '-r', '15',                                   // Very low frame rate
   '-y',                                         // Overwrite output file
@@ -75,7 +75,7 @@ ffmpegProcess.on('close', async (code) => {
       // Display progress
       emitter.on('progress', (progress) => {
         if (progress.time) {
-          const percent = Math.min(100, Math.round((progress.time / 2) * 100)); // Updated for 2-second video
+          const percent = Math.min(100, Math.round((progress.time / 5) * 100)); // Updated for 5-second video
           const barLength = 30;
           const filledLength = Math.round(barLength * percent / 100);
           const bar = '█'.repeat(filledLength) + '░'.repeat(barLength - filledLength);
