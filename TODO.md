@@ -4,7 +4,7 @@ This document outlines potential features to enhance the @profullstack/transcode
 
 ## High-Impact, Easy-to-Implement Features
 
-### 1. ✂️ Video Trimming & Clipping (Not Implemented)
+### 1. ✂️ Video Trimming & Clipping ✅ (IMPLEMENTED)
 
 **What**: Extract specific segments from videos without re-encoding the entire file.
 
@@ -208,6 +208,7 @@ const results = await transcodeImageBatch([
 3. ✅ Watermarking (High value, moderate effort)
 4. ✅ Metadata Extraction (Low effort, high value)
 5. ✅ CLI Tool (Expands user base, moderate effort)
+6. ✅ Video Trimming & Clipping (High impact, moderate effort)
 
 ### Next Features to Implement
 1. 🔄 Batch Processing (High utility, low effort) - NEXT PRIORITY
