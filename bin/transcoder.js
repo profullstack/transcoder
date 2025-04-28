@@ -99,6 +99,46 @@ const argv = yargs(hideBin(process.argv))
     type: 'string'
   })
   
+  // Watermark options
+  .option('watermark-image', {
+    describe: 'Path to image file to use as watermark',
+    type: 'string'
+  })
+  .option('watermark-text', {
+    describe: 'Text to use as watermark',
+    type: 'string'
+  })
+  .option('watermark-position', {
+    describe: 'Position of the watermark',
+    type: 'string',
+    choices: ['topLeft', 'topRight', 'bottomLeft', 'bottomRight', 'center'],
+    default: 'bottomRight'
+  })
+  .option('watermark-opacity', {
+    describe: 'Opacity of the watermark (0.0 to 1.0)',
+    type: 'number',
+    default: 0.7
+  })
+  .option('watermark-margin', {
+    describe: 'Margin from the edge in pixels',
+    type: 'number',
+    default: 10
+  })
+  .option('watermark-font-size', {
+    describe: 'Font size for text watermark in pixels',
+    type: 'number',
+    default: 24
+  })
+  .option('watermark-font-color', {
+    describe: 'Font color for text watermark',
+    type: 'string',
+    default: 'white'
+  })
+  .option('watermark-box-color', {
+    describe: 'Background box color for text watermark (e.g., "black@0.5" for semi-transparent black)',
+    type: 'string'
+  })
+  
   // Trim options
   .option('trim', {
     describe: 'Enable video trimming',
@@ -644,6 +684,32 @@ function main() {
     
     if (argv.thumbnailOutput) {
       options.thumbnails.outputPattern = argv.thumbnailOutput;
+    }
+  }
+  
+  // Add watermark options
+  if (argv.watermarkImage || argv.watermarkText) {
+    options.watermark = {};
+    
+    if (argv.watermarkImage) {
+      options.watermark.image = argv.watermarkImage;
+    }
+    
+    if (argv.watermarkText) {
+      options.watermark.text = argv.watermarkText;
+    }
+    
+    options.watermark.position = argv.watermarkPosition;
+    options.watermark.opacity = argv.watermarkOpacity;
+    options.watermark.margin = argv.watermarkMargin;
+    
+    if (argv.watermarkText) {
+      options.watermark.fontSize = argv.watermarkFontSize;
+      options.watermark.fontColor = argv.watermarkFontColor;
+      
+      if (argv.watermarkBoxColor) {
+        options.watermark.boxColor = argv.watermarkBoxColor;
+      }
     }
   }
   

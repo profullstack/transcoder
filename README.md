@@ -221,9 +221,39 @@ await transcode('input.mp4', 'output.mp4', {
 });
 ```
 
+### Using Watermarks
+
+You can add image or text watermarks to your videos:
+
+```javascript
+import { transcode } from '@profullstack/transcoder';
+
+// Add an image watermark
+await transcode('input.mp4', 'output.mp4', {
+  watermark: {
+    image: 'logo.png',
+    position: 'bottomRight', // Options: topLeft, topRight, bottomLeft, bottomRight, center
+    opacity: 0.7,            // 0.0 to 1.0
+    margin: 10               // Margin from the edge in pixels
+  }
+});
+
+// Add a text watermark
+await transcode('input.mp4', 'output.mp4', {
+  watermark: {
+    text: '© Copyright 2025',
+    position: 'bottomRight',
+    fontColor: 'white',
+    fontSize: 24,
+    boxColor: 'black@0.5',   // Optional background box with opacity
+    opacity: 0.8
+  }
+});
+```
+
 ### Using the CLI Tool
 
-The module includes a command-line interface (CLI) for easy video transcoding and thumbnail generation directly from your terminal:
+The module includes a command-line interface (CLI) for easy video transcoding, thumbnail generation, and watermarking directly from your terminal:
 
 ```bash
 # Basic usage
@@ -277,6 +307,14 @@ The CLI tool features a cool progress bar with real-time information:
 | `--trim` | Enable video trimming |
 | `--start` | Start time for trimming (in seconds or HH:MM:SS format) |
 | `--end` | End time for trimming (in seconds or HH:MM:SS format) |
+| `--watermark-image` | Path to image file to use as watermark |
+| `--watermark-text` | Text to use as watermark |
+| `--watermark-position` | Position of the watermark (topLeft, topRight, bottomLeft, bottomRight, center) |
+| `--watermark-opacity` | Opacity of the watermark (0.0 to 1.0) |
+| `--watermark-margin` | Margin from the edge in pixels |
+| `--watermark-font-size` | Font size for text watermark in pixels |
+| `--watermark-font-color` | Font color for text watermark |
+| `--watermark-box-color` | Background box color for text watermark |
 | `--verbose`, `-v` | Show detailed progress information |
 | `--help`, `-?` | Show help |
 
@@ -377,6 +415,7 @@ The following options can be customized:
 |--------|------|---------|-------------|
 | preset | string | - | Platform preset name (e.g., 'instagram', 'youtube-hd', 'twitter') |
 | thumbnails | object | - | Thumbnail generation options (see below) |
+| watermark | object | - | Watermark options (see below) |
 | videoCodec | string | 'libx264' | Video codec to use |
 | audioCodec | string | 'aac' | Audio codec to use |
 | videoBitrate | string | '1500k' | Video bitrate |
@@ -401,6 +440,20 @@ The following options can be customized:
 | filenamePattern | string | 'thumbnail-%03d' | Pattern for thumbnail filenames |
 | timestamps | boolean | false | Whether to use specific timestamps instead of intervals |
 | timestampList | Array<string> | [] | List of timestamps (only used if timestamps is true) |
+
+**Watermark Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| image | string | - | Path to image file to use as watermark |
+| text | string | - | Text to use as watermark |
+| position | string | 'bottomRight' | Position of the watermark (topLeft, topRight, bottomLeft, bottomRight, center) |
+| opacity | number | 0.7 | Opacity of the watermark (0.0 to 1.0) |
+| margin | number | 10 | Margin from the edge in pixels |
+| fontSize | number | 24 | Font size for text watermark in pixels |
+| fontColor | string | 'white' | Font color for text watermark |
+| fontFile | string | - | Path to font file for text watermark |
+| boxColor | string | - | Background box color for text watermark (e.g., "black@0.5" for semi-transparent black) |
 
 **Note:** When using a platform preset, the `preset` option refers to the platform name (e.g., 'instagram'). The FFmpeg encoding preset (e.g., 'medium', 'slow') is still configurable but is included in each platform preset with appropriate values.
 

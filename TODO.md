@@ -141,21 +141,58 @@ transcoder input.mp4 output.mp4 --preset youtube-hd --thumbnails 3
 
 **Why**: "Transcode directly to and from your cloud storage. No downloading, no uploading, no hassle."
 
+### 16. 🎵 Audio Transcoding
+
+**What**: Convert audio files between different formats and optimize quality.
+
+**Why**: "Perfect audio conversion for podcasts, music, and sound effects. Optimize for quality or file size."
+
+```javascript
+// Example API
+await transcodeAudio('input.wav', 'output.mp3', {
+  bitrate: '320k',
+  normalize: true,
+  fadeIn: 2,
+  fadeOut: 3
+});
+```
+
+### 17. 🖼️ Image Transcoding
+
+**What**: Convert and optimize images between different formats.
+
+**Why**: "Batch convert your image library. Optimize for web, reduce file sizes, maintain quality."
+
+```javascript
+// Example API
+await transcodeImage('input.png', 'output.webp', {
+  quality: 85,
+  resize: { width: 1200, height: 800 },
+  optimize: true
+});
+
+// Batch processing
+const results = await transcodeImageBatch([
+  { input: 'image1.png', output: 'image1.webp' },
+  { input: 'image2.jpg', output: 'image2.webp' }
+], { quality: 85, optimize: true });
+```
+
 ## Long-Term Vision
 
-### 16. 🤖 AI-Enhanced Video Processing
+### 18. 🤖 AI-Enhanced Video Processing
 
 **What**: Use AI to improve video quality, generate thumbnails, and create highlights.
 
 **Why**: "Transform ordinary videos into extraordinary content with the power of AI."
 
-### 17. 🔄 Streaming Transcoding
+### 19. 🔄 Streaming Transcoding
 
 **What**: Transcode videos on-the-fly for streaming applications.
 
 **Why**: "Deliver the right format to the right viewer at the right time, every time."
 
-### 18. 🌐 Distributed Processing
+### 20. 🌐 Distributed Processing
 
 **What**: Distribute transcoding tasks across multiple machines.
 
@@ -167,8 +204,11 @@ transcoder input.mp4 output.mp4 --preset youtube-hd --thumbnails 3
 
 1. ✅ Smart Presets (High impact, low effort) - IMPLEMENTED
 2. ✅ Thumbnail Generation (High demand, moderate effort) - IMPLEMENTED
-3. Batch Processing (High utility, low effort)
-4. Metadata Extraction (Low effort, high value)
-5. ✅ CLI Tool (Expands user base, moderate effort) - IMPLEMENTED
+3. ✅ Watermarking (High value, moderate effort) - IMPLEMENTED
+4. Batch Processing (High utility, low effort)
+5. Metadata Extraction (Low effort, high value)
+6. ✅ CLI Tool (Expands user base, moderate effort) - IMPLEMENTED
+7. Audio Transcoding (Expands functionality, moderate effort)
+8. Image Transcoding (Expands functionality, moderate effort)
 
 These features will significantly enhance the value proposition of @profullstack/transcoder while maintaining its core philosophy of simplicity and efficiency.

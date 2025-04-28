@@ -16,10 +16,12 @@
   },
   "scripts": {
     "test": "mocha test/**/*.test.js",
+    "test:watermarking": "mocha test/watermarking.test.js",
     "generate-test-video": "node scripts/generate-test-video.js",
     "example": "node examples/basic-usage.js",
     "example:presets": "node examples/smart-presets.js",
     "example:thumbnails": "node examples/thumbnail-generation.js",
+    "example:watermarking": "node examples/watermarking.js",
     "install-ffmpeg": "./bin/build-ffmpeg.sh",
     "cli": "./bin/transcoder.js"
   },

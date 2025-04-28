@@ -29,7 +29,8 @@ export const DEFAULT_OPTIONS = {
   pixelFormat: 'yuv420p',    // Standard pixel format for web compatibility
   movflags: '+faststart',    // Optimize for web streaming
   threads: 0,                // Use all available CPU cores
-  overwrite: false           // Don't overwrite existing files by default
+  overwrite: false,          // Don't overwrite existing files by default
+  watermark: null            // No watermark by default
 };
 
 /**
@@ -408,13 +409,211 @@ export async function transcode(inputPath, outputPath, options = {}) {
     ffmpegArgs.push('-b:a', settings.audioBitrate);
   }
   
-  // Add resolution if specified
+  // Prepare video filters
+  let videoFilters = [];
+  
+  // Add scaling filter if specified
   if (settings.width > 0 && settings.height > 0) {
-    ffmpegArgs.push('-vf', `scale=${settings.width}:${settings.height}`);
+    videoFilters.push(`scale=${settings.width}:${settings.height}`);
   } else if (settings.width > 0) {
-    ffmpegArgs.push('-vf', `scale=${settings.width}:-1`);
+    videoFilters.push(`scale=${settings.width}:-1`);
   } else if (settings.height > 0) {
-    ffmpegArgs.push('-vf', `scale=-1:${settings.height}`);
+    videoFilters.push(`scale=-1:${settings.height}`);
+  }
+  
+  // Add watermark if specified
+  if (settings.watermark) {
+    const watermark = settings.watermark;
+    
+    // Validate watermark settings
+    if (!watermark.image && !watermark.text) {
+      throw new Error('Watermark must have either image or text property');
+    }
+    
+    try {
+      if (watermark.image) {
+        // Check if watermark image exists
+        if (!fs.existsSync(watermark.image)) {
+          throw new Error(`Watermark image does not exist: ${watermark.image}`);
+        }
+        
+        // Set default values
+        const position = watermark.position || 'bottomRight';
+        const opacity = watermark.opacity || 0.7;
+        const margin = watermark.margin || 10;
+        
+        // Calculate position
+        let positionFilter = '';
+        switch (position) {
+          case 'topLeft':
+            positionFilter = `overlay=${margin}:${margin}`;
+            break;
+          case 'topRight':
+            positionFilter = `overlay=main_w-overlay_w-${margin}:${margin}`;
+            break;
+          case 'bottomLeft':
+            positionFilter = `overlay=${margin}:main_h-overlay_h-${margin}`;
+            break;
+          case 'bottomRight':
+            positionFilter = `overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}`;
+            break;
+          case 'center':
+            positionFilter = `overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2`;
+            break;
+          default:
+            positionFilter = `overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}`;
+        }
+        
+        // Add opacity if less than 1
+        if (opacity < 1) {
+          videoFilters.push(`movie=${watermark.image},format=rgba,colorchannelmixer=aa=${opacity}[watermark];[v][watermark]${positionFilter}[v]`);
+        } else {
+          videoFilters.push(`movie=${watermark.image}[watermark];[v][watermark]${positionFilter}[v]`);
+        }
+      } else if (watermark.text) {
+        // For text watermarks, we'll create a temporary image file with the text
+        // This is a workaround for systems where the drawtext filter is not available
+        
+        // Create a temporary directory for the watermark image if it doesn't exist
+        const tempDir = path.join(path.dirname(outputPath), '.temp');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        
+        // Create a unique filename for the watermark image
+        const tempWatermarkImage = path.join(tempDir, `watermark-${Date.now()}.png`);
+        
+        // Set default values
+        const position = watermark.position || 'bottomRight';
+        const opacity = watermark.opacity || 0.7;
+        const margin = watermark.margin || 10;
+        
+        // Create the watermark image using a separate FFmpeg process
+        await new Promise((resolve, reject) => {
+          // Determine text color and background
+          const fontColor = watermark.fontColor || 'white';
+          const fontSize = watermark.fontSize || 24;
+          const boxColor = watermark.boxColor || 'black@0.5';
+          const useBox = watermark.boxColor ? 1 : 0;
+          
+          // Calculate image size based on text length and font size
+          const width = watermark.text.length * fontSize * 0.6;
+          const height = fontSize * 1.5;
+          
+          // Create FFmpeg command to generate text image
+          const args = [
+            '-f', 'lavfi',
+            '-i', `color=c=black@0:s=${width}x${height}`,
+            '-vf', `drawtext=text='${watermark.text.replace(/'/g, "'\\\\''")}':fontcolor=${fontColor}:fontsize=${fontSize}:x=(w-text_w)/2:y=(h-text_h)/2${useBox ? `:box=1:boxcolor=${boxColor}` : ''}`,
+            '-frames:v', '1',
+            '-y',
+            tempWatermarkImage
+          ];
+          
+          const ffmpegProcess = spawn('ffmpeg', args);
+          
+          let errorOutput = '';
+          
+          ffmpegProcess.stderr.on('data', (data) => {
+            errorOutput += data.toString();
+            
+            // Check if the error contains "No such filter: 'drawtext'"
+            if (errorOutput.includes("No such filter: 'drawtext'")) {
+              // If drawtext filter is not available, create a simple colored rectangle as fallback
+              const fallbackArgs = [
+                '-f', 'lavfi',
+                '-i', `color=c=${boxColor || 'black@0.5'}:s=${width}x${height}`,
+                '-frames:v', '1',
+                '-y',
+                tempWatermarkImage
+              ];
+              
+              // Kill the current process
+              ffmpegProcess.kill();
+              
+              // Start a new process with the fallback command
+              const fallbackProcess = spawn('ffmpeg', fallbackArgs);
+              
+              fallbackProcess.on('close', (code) => {
+                if (code === 0) {
+                  resolve();
+                } else {
+                  reject(new Error(`Failed to create fallback watermark image: ${errorOutput}`));
+                }
+              });
+            }
+          });
+          
+          ffmpegProcess.on('close', (code) => {
+            if (code === 0) {
+              resolve();
+            } else if (!errorOutput.includes("No such filter: 'drawtext'")) {
+              reject(new Error(`Failed to create watermark image: ${errorOutput}`));
+            }
+          });
+          
+          ffmpegProcess.on('error', (err) => {
+            reject(new Error(`Failed to start FFmpeg process: ${err.message}`));
+          });
+        });
+        
+        // Now use the generated image as a watermark
+        // Calculate position
+        let positionFilter = '';
+        switch (position) {
+          case 'topLeft':
+            positionFilter = `overlay=${margin}:${margin}`;
+            break;
+          case 'topRight':
+            positionFilter = `overlay=main_w-overlay_w-${margin}:${margin}`;
+            break;
+          case 'bottomLeft':
+            positionFilter = `overlay=${margin}:main_h-overlay_h-${margin}`;
+            break;
+          case 'bottomRight':
+            positionFilter = `overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}`;
+            break;
+          case 'center':
+            positionFilter = `overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2`;
+            break;
+          default:
+            positionFilter = `overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}`;
+        }
+        
+        // Add opacity if less than 1
+        if (opacity < 1) {
+          videoFilters.push(`movie=${tempWatermarkImage},format=rgba,colorchannelmixer=aa=${opacity}[watermark];[v][watermark]${positionFilter}[v]`);
+        } else {
+          videoFilters.push(`movie=${tempWatermarkImage}[watermark];[v][watermark]${positionFilter}[v]`);
+        }
+        
+        // Add cleanup function to delete the temporary watermark image after transcoding
+        process.on('exit', () => {
+          try {
+            if (fs.existsSync(tempWatermarkImage)) {
+              fs.unlinkSync(tempWatermarkImage);
+            }
+          } catch (err) {
+            // Ignore errors during cleanup
+          }
+        });
+      }
+    } catch (error) {
+      console.warn(`Warning: Failed to add watermark: ${error.message}`);
+      console.warn('Continuing transcoding without watermark...');
+    }
+  }
+  
+  // Apply video filters if any
+  if (videoFilters.length > 0) {
+    // Add input label for complex filters
+    if (videoFilters.some(filter => filter.includes('[v]'))) {
+      ffmpegArgs.push('-filter_complex', `[0:v]${videoFilters.join(',')}[outv]`);
+      ffmpegArgs.push('-map', '[outv]');
+      ffmpegArgs.push('-map', '0:a?');
+    } else {
+      ffmpegArgs.push('-vf', videoFilters.join(','));
+    }
   }
   
   // Add fps if specified

@@ -96,7 +96,11 @@ install_build_deps_debian() {
     libfdk-aac-dev \
     libopus-dev \
     librubberband-dev \
-    libsoxr-dev
+    libsoxr-dev \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libfribidi-dev \
+    libharfbuzz-dev
   
   if [ $? -ne 0 ]; then
     print_message "Failed to install build dependencies." "${RED}"
@@ -121,9 +125,12 @@ install_build_deps_arch() {
     libvpx \
     libass \
     freetype2 \
+    harfbuzz \
     opus \
     lame \
-    rubberband
+    rubberband \
+    fontconfig \
+    fribidi
   
   # Try to install optional dependencies
   sudo pacman -Sy --needed libsoxr || print_message "libsoxr not found, continuing without it" "${YELLOW}"
@@ -157,12 +164,15 @@ install_build_deps_macos() {
     libvpx \
     libass \
     freetype \
+    harfbuzz \
     opus \
     lame \
     fdk-aac \
     sdl2 \
     rubberband \
-    libsoxr
+    libsoxr \
+    fontconfig \
+    fribidi
   
   if [ $? -ne 0 ]; then
     print_message "Some dependencies might be missing, but continuing with build." "${YELLOW}"
@@ -221,6 +231,7 @@ build_ffmpeg() {
     --enable-nonfree
     --enable-libass
     --enable-libfreetype
+    --enable-libharfbuzz
     --enable-libmp3lame
     --enable-libopus
     --enable-libvorbis
