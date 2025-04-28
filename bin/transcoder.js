@@ -8,7 +8,7 @@ import colors from 'ansi-colors';
 import yargs from 'yargs/yargs';
 import { hideBin } from 'yargs/helpers';
 import { getPreset, PRESETS } from '../presets.js';
-import { DEFAULT_OPTIONS } from '../index.js';
+import { DEFAULT_OPTIONS, transcode } from '../index.js';
 
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
@@ -510,6 +510,9 @@ function transcodeVideo(inputPath, outputPath, options, callback) {
       eta: 'calculating...'
     });
     
+    // Create the FFmpeg command string for logging
+    const ffmpegCommand = `ffmpeg ${ffmpegArgs.join(' ')}`;
+    
     // Spawn ffmpeg process
     const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
     
@@ -572,14 +575,14 @@ function transcodeVideo(inputPath, outputPath, options, callback) {
               for (let i = 1; i <= thumbCount; i++) {
                 thumbnails.push(thumbOutputPattern.replace('%d', i));
               }
-              callback(null, { outputPath, thumbnails });
+              callback(null, { outputPath, thumbnails, ffmpegCommand });
             } else {
               console.error(colors.yellow('Warning: Thumbnail generation failed, but transcoding was successful.'));
               callback(null, { outputPath });
             }
           });
         } else {
-          callback(null, { outputPath });
+          callback(null, { outputPath, ffmpegCommand });
         }
       } else {
         callback(new Error(`FFmpeg transcoding failed with code ${code}: ${errorOutput}`));
@@ -742,19 +745,37 @@ function main() {
     console.log('Options:', JSON.stringify(options, null, 2));
   }
   
-  transcodeVideo(input, output, options, (err, result) => {
-    if (err) {
+  // Use the transcode function from index.js instead of the local transcodeVideo function
+  transcode(input, output, options)
+    .then((result) => {
+      console.log(colors.green(`\nTranscoding completed successfully: ${result.outputPath}`));
+      
+      // Log the FFmpeg command
+      if (result.ffmpegCommand) {
+        console.log('\nEquivalent FFmpeg command:');
+        console.log(colors.cyan(result.ffmpegCommand));
+        
+        // Check if the command includes video filters
+        if (result.ffmpegCommand.includes('-vf')) {
+          console.log('\nCommand includes video filters:');
+          const vfIndex = result.ffmpegCommand.indexOf('-vf');
+          const nextArgIndex = result.ffmpegCommand.indexOf(' ', vfIndex + 4);
+          const filter = result.ffmpegCommand.substring(vfIndex + 4, nextArgIndex);
+          console.log(colors.yellow(filter));
+        } else {
+          console.log('\nCommand does not include video filters');
+        }
+      }
+      
+      if (result.thumbnails && result.thumbnails.length > 0) {
+        console.log('\nThumbnails generated:');
+        result.thumbnails.forEach(thumbnail => console.log(`- ${colors.yellow(thumbnail)}`));
+      }
+    })
+    .catch((err) => {
       console.error(colors.red('Error:'), err.message);
       process.exit(1);
-    }
-    
-    console.log(colors.green(`\nTranscoding completed successfully: ${result.outputPath}`));
-    
-    if (result.thumbnails && result.thumbnails.length > 0) {
-      console.log(colors.green('Thumbnails generated:'));
-      result.thumbnails.forEach(thumbnail => console.log(`- ${colors.yellow(thumbnail)}`));
-    }
-  });
+    });
 }
 
 // Run the main function

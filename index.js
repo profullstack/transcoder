@@ -574,6 +574,7 @@ export async function transcode(inputPath, outputPath, options = {}) {
         // Create drawtext filter with the font file if available
         let textFilter;
         if (fontFile && fs.existsSync(fontFile)) {
+          console.log(`Using font file: ${fontFile}`);
           textFilter = `drawtext=fontfile=${fontFile}:text='${watermark.text}':x=${x}:y=${y}:fontsize=${fontSize}:fontcolor=${fontColor}:box=1:boxcolor=black@0.8:boxborderw=10`;
         } else {
           // Fallback without fontfile - use a colored rectangle instead
@@ -637,6 +638,11 @@ export async function transcode(inputPath, outputPath, options = {}) {
   if (videoFilters.length > 0) {
     // Use -vf for all filters now that we're using drawbox instead of overlay
     ffmpegArgs.push('-vf', videoFilters.join(','));
+    
+    // Log the filter being used for debugging
+    console.log(`Using video filter: ${videoFilters.join(',')}`);
+  } else {
+    console.log('No video filters applied');
   }
   
   // Add fps if specified
@@ -674,6 +680,9 @@ export async function transcode(inputPath, outputPath, options = {}) {
   
   // Add output file
   ffmpegArgs.push(outputPath);
+  
+  // Store the complete FFmpeg command for logging
+  const ffmpegCommand = `ffmpeg ${ffmpegArgs.join(' ')}`;
   
   return new Promise((resolve, reject) => {
     // Spawn ffmpeg process
@@ -719,14 +728,14 @@ export async function transcode(inputPath, outputPath, options = {}) {
           try {
             const thumbnailDir = path.dirname(outputPath);
             const thumbnails = await generateThumbnails(inputPath, thumbnailDir, thumbnailOptions);
-            resolve({ outputPath, emitter, thumbnails });
+            resolve({ outputPath, emitter, thumbnails, ffmpegCommand });
           } catch (thumbnailError) {
             // If thumbnail generation fails, still return the transcoded video
             console.error(`Thumbnail generation failed: ${thumbnailError.message}`);
-            resolve({ outputPath, emitter });
+            resolve({ outputPath, emitter, ffmpegCommand });
           }
         } else {
-          resolve({ outputPath, emitter });
+          resolve({ outputPath, emitter, ffmpegCommand });
         }
       } else {
         reject(new Error(`FFmpeg transcoding failed with code ${code}: ${errorOutput}`));
