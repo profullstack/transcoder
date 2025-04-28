@@ -5,6 +5,9 @@ A lightweight Node.js module for transcoding videos to web-friendly MP4 format u
 [![GitHub](https://img.shields.io/github/license/profullstack/transcoder)](https://github.com/profullstack/transcoder/blob/master/LICENSE)
 [![GitHub commit activity](https://img.shields.io/github/commit-activity/m/profullstack/transcoder)](https://github.com/profullstack/transcoder/pulse)
 [![GitHub last commit](https://img.shields.io/github/last-commit/profullstack/transcoder)](https://github.com/profullstack/transcoder/commits/master)
+[![npm version](https://img.shields.io/npm/v/@profullstack/transcoder)](https://www.npmjs.com/package/@profullstack/transcoder)
+[![npm downloads](https://img.shields.io/npm/dm/@profullstack/transcoder)](https://www.npmjs.com/package/@profullstack/transcoder)
+[![npm bundle size](https://img.shields.io/bundlephobia/min/@profullstack/transcoder)](https://bundlephobia.com/package/@profullstack/transcoder)
 
 [![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=fff&style=for-the-badge)](https://github.com/profullstack/transcoder)
 [![macOS](https://img.shields.io/badge/macOS-000000?logo=macos&logoColor=fff&style=for-the-badge)](https://github.com/profullstack/transcoder)
