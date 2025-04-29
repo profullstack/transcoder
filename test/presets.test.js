@@ -78,6 +78,21 @@ describe('Smart Presets', function() {
         'mp3-low'
       ];
       
+      const expectedImagePresets = [
+        'jpeg-high',
+        'jpeg-medium',
+        'jpeg-low',
+        'webp-high',
+        'webp-medium',
+        'webp-low',
+        'png',
+        'png-optimized',
+        'avif-high',
+        'avif-medium',
+        'thumbnail',
+        'social-media'
+      ];
+      
       // Check video presets
       expectedVideoPresets.forEach(presetName => {
         expect(PRESETS).to.have.property(presetName);
@@ -89,10 +104,16 @@ describe('Smart Presets', function() {
         expect(PRESETS).to.have.property(presetName);
         expect(PRESETS[presetName]).to.be.an('object');
       });
+      
+      // Check image presets
+      expectedImagePresets.forEach(presetName => {
+        expect(PRESETS).to.have.property(presetName);
+        expect(PRESETS[presetName]).to.be.an('object');
+      });
     });
     
     it('should have valid properties for each preset', function() {
-      // Separate video and audio presets
+      // Separate video, audio, and image presets
       const videoPresetNames = [
         'instagram', 'instagram-stories', 'youtube-hd', 'youtube-4k',
         'twitter', 'facebook', 'tiktok', 'vimeo-hd', 'web', 'mobile',
@@ -102,6 +123,14 @@ describe('Smart Presets', function() {
       const audioPresetNames = [
         'audio-high', 'audio-medium', 'audio-low', 'audio-voice',
         'mp3-high', 'mp3-medium', 'mp3-low'
+      ];
+      
+      const imagePresetNames = [
+        'jpeg-high', 'jpeg-medium', 'jpeg-low',
+        'webp-high', 'webp-medium', 'webp-low',
+        'png', 'png-optimized',
+        'avif-high', 'avif-medium',
+        'thumbnail', 'social-media'
       ];
       
       // Check video presets
@@ -119,6 +148,16 @@ describe('Smart Presets', function() {
         const preset = PRESETS[presetName];
         expect(preset).to.have.property('audioCodec').that.is.a('string');
         expect(preset).to.have.property('audioBitrate').that.is.a('string');
+      });
+      
+      // Check image presets
+      imagePresetNames.forEach(presetName => {
+        const preset = PRESETS[presetName];
+        expect(preset).to.have.property('format').that.is.a('string');
+        if (preset.quality) {
+          expect(preset.quality).to.be.a('number');
+        }
+        expect(preset).to.have.property('optimize').that.is.a('boolean');
       });
     });
   });

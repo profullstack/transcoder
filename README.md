@@ -16,6 +16,8 @@ A lightweight Node.js module for transcoding videos to web-friendly MP4 format u
 ## Features
 
 - Transcodes any video format to web-friendly MP4 (H.264/AAC)
+- Transcodes audio files between formats (MP3, AAC, FLAC, OGG, etc.)
+- Converts and optimizes images with various transformations
 - Ensures compatibility across all modern browsers
 - Modern ESM (ECMAScript Modules) implementation
 - Async/await API with real-time progress reporting
@@ -245,6 +247,8 @@ await transcode('input.mp4', 'twitter-output.mp4', {
 
 Available presets:
 
+**Video Presets:**
+
 | Preset | Description | Resolution | Optimized For |
 |--------|-------------|------------|---------------|
 | `instagram` | Square format | 1080x1080 | Instagram feed |
@@ -257,6 +261,35 @@ Available presets:
 | `vimeo-hd` | HD format | 1920x1080 | Vimeo |
 | `web` | Optimized for web | 1280x720 | Web playback |
 | `mobile` | Optimized for mobile | 640x360 | Mobile devices |
+
+**Audio Presets:**
+
+| Preset | Description | Codec | Bitrate | Sample Rate | Channels |
+|--------|-------------|-------|---------|-------------|----------|
+| `audio-high` | High quality audio | AAC | 320k | 48000 Hz | 2 (stereo) |
+| `audio-medium` | Medium quality audio | AAC | 192k | 44100 Hz | 2 (stereo) |
+| `audio-low` | Low quality audio | AAC | 96k | 44100 Hz | 2 (stereo) |
+| `audio-voice` | Voice optimized | AAC | 128k | 44100 Hz | 1 (mono) |
+| `mp3-high` | High quality MP3 | MP3 | 320k | 44100 Hz | 2 (stereo) |
+| `mp3-medium` | Medium quality MP3 | MP3 | 192k | 44100 Hz | 2 (stereo) |
+| `mp3-low` | Low quality MP3 | MP3 | 96k | 44100 Hz | 2 (stereo) |
+
+**Image Presets:**
+
+| Preset | Description | Format | Quality | Optimized For |
+|--------|-------------|--------|---------|---------------|
+| `jpeg-high` | High quality JPEG | JPEG | 95% | High quality images |
+| `jpeg-medium` | Medium quality JPEG | JPEG | 85% | Web images |
+| `jpeg-low` | Low quality JPEG | JPEG | 70% | Small file size |
+| `webp-high` | High quality WebP | WebP | 90% | Modern browsers |
+| `webp-medium` | Medium quality WebP | WebP | 80% | Web images |
+| `webp-low` | Low quality WebP | WebP | 65% | Small file size |
+| `png` | Standard PNG | PNG | Lossless | Images with transparency |
+| `png-optimized` | Optimized PNG | PNG | Lossless | Smaller PNG files |
+| `avif-high` | High quality AVIF | AVIF | 80% | Modern browsers |
+| `avif-medium` | Medium quality AVIF | AVIF | 60% | Small file size |
+| `thumbnail` | Thumbnail size | JPEG | 80% | Thumbnails (300x300) |
+| `social-media` | Social media size | JPEG | 90% | Social sharing (1200x630) |
 
 You can also override any preset setting by providing your own options:
 
@@ -420,6 +453,65 @@ Transcodes a video file to web-friendly MP4 format.
     - `video`: Video stream information (codec, resolution, fps, etc.)
     - `audio`: Audio stream information (codec, sample rate, channels, etc.)
 
+### transcodeAudio(inputPath, outputPath, [options])
+
+Transcodes an audio file to another format with various enhancements. Can also extract audio from video files.
+
+**Parameters:**
+
+- `inputPath` (string): Path to the input audio or video file
+- `outputPath` (string): Path where the transcoded audio will be saved
+- `options` (object, optional): Transcoding options or preset name
+  - Can include a `preset` property with one of the predefined audio presets
+  - Can include audio enhancement options like normalize, fadeIn, fadeOut, etc.
+
+**Returns:**
+
+- Promise that resolves with an object containing:
+  - `outputPath` (string): Path to the transcoded audio
+  - `emitter` (TranscodeEmitter): Event emitter for progress tracking
+  - `metadata` (Object, optional): Audio metadata extracted from the input file
+    - `format`: Format information (duration, size, bitrate, etc.)
+    - `audio`: Audio stream information (codec, sample rate, channels, etc.)
+
+### transcodeImage(inputPath, outputPath, [options])
+
+Transcodes an image file to another format with various transformations.
+
+**Parameters:**
+
+- `inputPath` (string): Path to the input image file
+- `outputPath` (string): Path where the transcoded image will be saved
+- `options` (object, optional): Transcoding options or preset name
+  - Can include a `preset` property with one of the predefined image presets
+  - Can include transformation options like resize, rotate, crop, etc.
+
+**Returns:**
+
+- Promise that resolves with an object containing:
+  - `outputPath` (string): Path to the transcoded image
+  - `emitter` (TranscodeEmitter): Event emitter for progress tracking
+  - `metadata` (Object, optional): Image metadata extracted from the input file
+    - `format`: Format information (size, format name, etc.)
+    - `image`: Image information (width, height, codec, etc.)
+
+### transcodeImageBatch(items, [globalOptions])
+
+Transcodes multiple images in batch with shared global options.
+
+**Parameters:**
+
+- `items` (Array<Object>): Array of objects with input, output, and options properties
+  - Each item must have `input` and `output` properties
+  - Each item can have an optional `options` property for image-specific options
+- `globalOptions` (object, optional): Global options applied to all items
+
+**Returns:**
+
+- Promise that resolves with an object containing:
+  - `successful` (Array): Array of successfully transcoded images with metadata
+  - `failed` (Array): Array of failed operations with error messages
+
 ### generateThumbnails(inputPath, outputDir, [options])
 
 Generates thumbnails from a video file without transcoding.
@@ -438,12 +530,6 @@ Generates thumbnails from a video file without transcoding.
 **Returns:**
 
 - Promise that resolves with an array of thumbnail paths
-
-**Returns:**
-
-- Promise that resolves with an object containing:
-  - `outputPath` (string): Path to the transcoded video
-  - `emitter` (TranscodeEmitter): Event emitter for progress tracking
 
 ### TranscodeEmitter Events
 
@@ -521,8 +607,9 @@ This module uses Node.js's built-in `child_process.spawn()` to call FFmpeg with 
 The module includes a script to generate a 5-second test video for manual testing purposes:
 
 ```bash
-# Generate a test video
+# Generate test media
 pnpm generate-test-video
+pnpm generate-test-audio
 
 # Run the basic example with the test video
 pnpm example
@@ -532,6 +619,12 @@ pnpm example:presets
 
 # Run the Thumbnail Generation example
 pnpm example:thumbnails
+
+# Run the Audio Transcoding example
+pnpm example:audio
+
+# Run the Image Transcoding example
+pnpm example:image
 ```
 
 This will:
@@ -552,8 +645,13 @@ The module includes the following test files:
 - `test/transcode.test.js` - Tests for the core transcoding functionality
 - `test/presets.test.js` - Tests for the Smart Presets feature
 - `test/thumbnails.test.js` - Tests for the Thumbnail Generation feature
+- `test/watermarking.test.js` - Tests for the Watermarking feature
+- `test/trimming.test.js` - Tests for the Video Trimming feature
+- `test/responsive.test.js` - Tests for the Responsive Video Profiles feature
+- `test/audio.test.js` - Tests for the Audio Transcoding feature
+- `test/image.test.js` - Tests for the Image Transcoding feature
 
-These tests verify the core functionality of the module, including error handling, option processing, preset handling, and thumbnail generation.
+These tests verify the core functionality of the module, including error handling, option processing, preset handling, thumbnail generation, watermarking, trimming, responsive profiles, audio transcoding, and image transcoding.
 
 ## License
 

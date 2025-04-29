@@ -417,6 +417,160 @@ export const MP3_LOW_QUALITY_PRESET = {
 };
 
 /**
+ * Image Presets for different quality levels and use cases
+ */
+
+/**
+ * High Quality JPEG Preset
+ * - Format: JPEG
+ * - Quality: 95
+ * - Optimized for high-quality images with minimal compression artifacts
+ */
+export const JPEG_HIGH_QUALITY_PRESET = {
+  format: 'jpg',
+  quality: 95,
+  optimize: true
+};
+
+/**
+ * Medium Quality JPEG Preset
+ * - Format: JPEG
+ * - Quality: 85
+ * - Good balance between quality and file size
+ */
+export const JPEG_MEDIUM_QUALITY_PRESET = {
+  format: 'jpg',
+  quality: 85,
+  optimize: true
+};
+
+/**
+ * Low Quality JPEG Preset
+ * - Format: JPEG
+ * - Quality: 70
+ * - Optimized for smaller file size
+ */
+export const JPEG_LOW_QUALITY_PRESET = {
+  format: 'jpg',
+  quality: 70,
+  optimize: true
+};
+
+/**
+ * WebP High Quality Preset
+ * - Format: WebP
+ * - Quality: 90
+ * - Optimized for high-quality images with better compression than JPEG
+ */
+export const WEBP_HIGH_QUALITY_PRESET = {
+  format: 'webp',
+  quality: 90,
+  optimize: true
+};
+
+/**
+ * WebP Medium Quality Preset
+ * - Format: WebP
+ * - Quality: 80
+ * - Good balance between quality and file size
+ */
+export const WEBP_MEDIUM_QUALITY_PRESET = {
+  format: 'webp',
+  quality: 80,
+  optimize: true
+};
+
+/**
+ * WebP Low Quality Preset
+ * - Format: WebP
+ * - Quality: 65
+ * - Optimized for smaller file size
+ */
+export const WEBP_LOW_QUALITY_PRESET = {
+  format: 'webp',
+  quality: 65,
+  optimize: true
+};
+
+/**
+ * PNG Preset
+ * - Format: PNG
+ * - Lossless compression
+ * - Optimized for images with transparency or sharp edges
+ */
+export const PNG_PRESET = {
+  format: 'png',
+  compressionLevel: 6,
+  optimize: true
+};
+
+/**
+ * PNG Optimized Preset
+ * - Format: PNG
+ * - Higher compression level for smaller file size
+ * - Still lossless, but slower encoding
+ */
+export const PNG_OPTIMIZED_PRESET = {
+  format: 'png',
+  compressionLevel: 9,
+  optimize: true
+};
+
+/**
+ * AVIF High Quality Preset
+ * - Format: AVIF
+ * - Quality: 80
+ * - Modern image format with excellent compression
+ */
+export const AVIF_HIGH_QUALITY_PRESET = {
+  format: 'avif',
+  quality: 80,
+  speed: 4,
+  optimize: true
+};
+
+/**
+ * AVIF Medium Quality Preset
+ * - Format: AVIF
+ * - Quality: 60
+ * - Good balance between quality and file size
+ */
+export const AVIF_MEDIUM_QUALITY_PRESET = {
+  format: 'avif',
+  quality: 60,
+  speed: 6,
+  optimize: true
+};
+
+/**
+ * Thumbnail Preset
+ * - Format: JPEG
+ * - Quality: 80
+ * - Resize to 300x300 (maintaining aspect ratio)
+ * - Optimized for thumbnails
+ */
+export const THUMBNAIL_PRESET = {
+  format: 'jpg',
+  quality: 80,
+  resize: { width: 300, height: 300, fit: 'inside' },
+  optimize: true
+};
+
+/**
+ * Social Media Preset
+ * - Format: JPEG
+ * - Quality: 90
+ * - Resize to 1200x630 (common social media size)
+ * - Optimized for social media sharing
+ */
+export const SOCIAL_MEDIA_PRESET = {
+  format: 'jpg',
+  quality: 90,
+  resize: { width: 1200, height: 630, fit: 'cover' },
+  optimize: true
+};
+
+/**
  * Map of preset names to preset configurations
  */
 export const PRESETS = {
@@ -440,7 +594,20 @@ export const PRESETS = {
   'audio-voice': AUDIO_VOICE_PRESET,
   'mp3-high': MP3_HIGH_QUALITY_PRESET,
   'mp3-medium': MP3_MEDIUM_QUALITY_PRESET,
-  'mp3-low': MP3_LOW_QUALITY_PRESET
+  'mp3-low': MP3_LOW_QUALITY_PRESET,
+  // Image presets
+  'jpeg-high': JPEG_HIGH_QUALITY_PRESET,
+  'jpeg-medium': JPEG_MEDIUM_QUALITY_PRESET,
+  'jpeg-low': JPEG_LOW_QUALITY_PRESET,
+  'webp-high': WEBP_HIGH_QUALITY_PRESET,
+  'webp-medium': WEBP_MEDIUM_QUALITY_PRESET,
+  'webp-low': WEBP_LOW_QUALITY_PRESET,
+  'png': PNG_PRESET,
+  'png-optimized': PNG_OPTIMIZED_PRESET,
+  'avif-high': AVIF_HIGH_QUALITY_PRESET,
+  'avif-medium': AVIF_MEDIUM_QUALITY_PRESET,
+  'thumbnail': THUMBNAIL_PRESET,
+  'social-media': SOCIAL_MEDIA_PRESET
 };
 
 /**

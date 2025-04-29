@@ -1272,6 +1272,417 @@ export async function transcodeAudio(inputPath, outputPath, options = {}) {
 }
 
 /**
+ * Default image transcoding options
+ * These settings ensure compatibility with most image viewers and web browsers
+ */
+export const DEFAULT_IMAGE_OPTIONS = {
+  format: 'jpg',         // JPEG format for maximum compatibility
+  quality: 85,           // Good balance between quality and file size
+  resize: null,          // No resizing by default
+  rotate: null,          // No rotation by default
+  flip: null,            // No flipping by default
+  crop: null,            // No cropping by default
+  optimize: true,        // Optimize output by default
+  stripMetadata: false,  // Keep metadata by default
+  overwrite: false       // Don't overwrite existing files by default
+};
+
+/**
+ * Transcodes an image file to another format with various transformations
+ *
+ * @param {string} inputPath - Path to the input image file
+ * @param {string} outputPath - Path where the transcoded image will be saved
+ * @param {Object} [options={}] - Transcoding options
+ * @returns {Promise<Object>} - Promise that resolves with the output path and metadata
+ */
+export async function transcodeImage(inputPath, outputPath, options = {}) {
+  // Create an emitter for progress events
+  const emitter = new TranscodeEmitter();
+  
+  // Handle platform-specific presets
+  let mergedOptions = { ...options };
+  
+  // If a preset name is provided, get the preset configuration
+  if (options.preset && typeof options.preset === 'string' && PRESETS[options.preset.toLowerCase()]) {
+    const presetConfig = getPreset(options.preset);
+    if (presetConfig) {
+      // Merge preset with user options (user options take precedence over preset)
+      mergedOptions = { ...presetConfig, ...options };
+    }
+  }
+  
+  // Merge default options with user options (including preset if applicable)
+  const settings = { ...DEFAULT_IMAGE_OPTIONS, ...mergedOptions };
+  
+  // Validate input and output paths
+  if (!inputPath || typeof inputPath !== 'string') {
+    throw new Error('Input path is required and must be a string');
+  }
+  
+  if (!outputPath || typeof outputPath !== 'string') {
+    throw new Error('Output path is required and must be a string');
+  }
+  
+  // Check if input file exists
+  if (!fs.existsSync(inputPath)) {
+    throw new Error(`Input file does not exist: ${inputPath}`);
+  }
+  
+  // Check if output file exists and handle overwrite option
+  if (fs.existsSync(outputPath) && !settings.overwrite) {
+    throw new Error(`Output file already exists: ${outputPath}. Set overwrite: true to overwrite.`);
+  }
+  
+  // Ensure output directory exists
+  const outputDir = path.dirname(outputPath);
+  if (!fs.existsSync(outputDir)) {
+    try {
+      fs.mkdirSync(outputDir, { recursive: true });
+    } catch (err) {
+      throw new Error(`Failed to create output directory: ${err.message}`);
+    }
+  }
+  
+  // Check if ffmpeg is installed
+  try {
+    await checkFfmpeg();
+  } catch (error) {
+    throw error;
+  }
+  
+  // Build ffmpeg arguments
+  const ffmpegArgs = [];
+  
+  // Add input file
+  ffmpegArgs.push('-i', inputPath);
+  
+  // Prepare filter complex string for image operations
+  const filters = [];
+  
+  // Add resize filter if specified
+  if (settings.resize) {
+    const { width, height, fit } = settings.resize;
+    
+    if (width || height) {
+      let resizeFilter = 'scale=';
+      
+      if (width && height) {
+        if (fit === 'inside') {
+          // Scale to fit within width/height while maintaining aspect ratio
+          resizeFilter += `'min(${width},iw)':'min(${height},ih)':force_original_aspect_ratio=decrease`;
+        } else if (fit === 'outside') {
+          // Scale to cover width/height while maintaining aspect ratio
+          resizeFilter += `'max(${width},iw)':'max(${height},ih)':force_original_aspect_ratio=increase`;
+        } else if (fit === 'cover') {
+          // Scale to cover width/height and crop to exact dimensions
+          resizeFilter += `'max(${width}*a/${height},1)*${width}':'max(${height}/(${width}/a),1)*${height}'`;
+          filters.push(resizeFilter);
+          filters.push(`crop=${width}:${height}`);
+          // Skip adding the resize filter again
+          resizeFilter = null;
+        } else {
+          // Default: exact dimensions
+          resizeFilter += `${width}:${height}`;
+        }
+      } else if (width) {
+        // Width only, maintain aspect ratio
+        resizeFilter += `${width}:-1`;
+      } else if (height) {
+        // Height only, maintain aspect ratio
+        resizeFilter += `-1:${height}`;
+      }
+      
+      if (resizeFilter) {
+        filters.push(resizeFilter);
+      }
+    }
+  }
+  
+  // Add rotation filter if specified
+  if (settings.rotate) {
+    const angle = settings.rotate;
+    if (angle === 90) {
+      filters.push('transpose=1'); // 90 degrees clockwise
+    } else if (angle === 180) {
+      filters.push('transpose=2,transpose=2'); // 180 degrees
+    } else if (angle === 270 || angle === -90) {
+      filters.push('transpose=2'); // 90 degrees counterclockwise
+    } else {
+      // Custom angle
+      filters.push(`rotate=${angle}*PI/180`);
+    }
+  }
+  
+  // Add flip filter if specified
+  if (settings.flip) {
+    if (settings.flip === 'horizontal') {
+      filters.push('hflip');
+    } else if (settings.flip === 'vertical') {
+      filters.push('vflip');
+    } else if (settings.flip === 'both') {
+      filters.push('hflip,vflip');
+    }
+  }
+  
+  // Add crop filter if specified
+  if (settings.crop && !settings.resize?.fit) {
+    const { x, y, width, height } = settings.crop;
+    if (width && height) {
+      filters.push(`crop=${width}:${height}:${x || 0}:${y || 0}`);
+    }
+  }
+  
+  // Apply filters if any
+  if (filters.length > 0) {
+    ffmpegArgs.push('-vf', filters.join(','));
+  }
+  
+  // Set output format and quality
+  if (settings.format) {
+    // Determine output format and codec
+    let outputFormat = settings.format.toLowerCase();
+    let codecArgs = [];
+    
+    switch (outputFormat) {
+      case 'jpg':
+      case 'jpeg':
+        outputFormat = 'mjpeg';
+        codecArgs = ['-q:v', Math.max(1, Math.min(31, Math.round(31 - (settings.quality / 100 * 30))))];
+        break;
+      case 'png':
+        outputFormat = 'png';
+        if (settings.compressionLevel) {
+          codecArgs = ['-compression_level', settings.compressionLevel.toString()];
+        }
+        break;
+      case 'webp':
+        outputFormat = 'webp';
+        codecArgs = ['-quality', settings.quality.toString()];
+        break;
+      case 'avif':
+        outputFormat = 'avif';
+        codecArgs = ['-quality', settings.quality.toString()];
+        if (settings.speed) {
+          codecArgs.push('-speed', settings.speed.toString());
+        }
+        break;
+      case 'gif':
+        outputFormat = 'gif';
+        break;
+      default:
+        // Default to JPEG
+        outputFormat = 'mjpeg';
+        codecArgs = ['-q:v', Math.max(1, Math.min(31, Math.round(31 - (settings.quality / 100 * 30))))];
+    }
+    
+    // Set output format
+    ffmpegArgs.push('-f', outputFormat);
+    
+    // Add codec-specific arguments
+    ffmpegArgs.push(...codecArgs);
+  }
+  
+  // Strip metadata if specified
+  if (settings.stripMetadata) {
+    ffmpegArgs.push('-map_metadata', '-1');
+  }
+  
+  // Add overwrite flag if needed
+  if (settings.overwrite) {
+    ffmpegArgs.push('-y');
+  } else {
+    ffmpegArgs.push('-n');
+  }
+  
+  // Add output file
+  ffmpegArgs.push(outputPath);
+  
+  // Store the complete FFmpeg command for logging
+  const ffmpegCommand = `ffmpeg ${ffmpegArgs.join(' ')}`;
+  
+  return new Promise((resolve, reject) => {
+    // Spawn ffmpeg process
+    const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
+    
+    let errorOutput = '';
+    
+    // Handle stdout (progress information)
+    ffmpegProcess.stdout.on('data', (data) => {
+      const dataStr = data.toString();
+      emitter.emit('log', dataStr);
+    });
+    
+    // Handle stderr (log information)
+    ffmpegProcess.stderr.on('data', (data) => {
+      const dataStr = data.toString();
+      errorOutput += dataStr;
+      
+      // Emit log event
+      emitter.emit('log', dataStr);
+    });
+    
+    // Handle process exit
+    ffmpegProcess.on('close', async (code) => {
+      if (code === 0) {
+        // Check if output file was created
+        if (!fs.existsSync(outputPath)) {
+          return reject(new Error('Transcoding failed: Output file was not created'));
+        }
+        
+        // Get image metadata
+        try {
+          const metadata = await getImageMetadata(inputPath);
+          resolve({ outputPath, emitter, ffmpegCommand, metadata });
+        } catch (metadataError) {
+          console.warn(`Warning: Failed to extract metadata: ${metadataError.message}`);
+          resolve({ outputPath, emitter, ffmpegCommand });
+        }
+      } else {
+        reject(new Error(`FFmpeg transcoding failed with code ${code}: ${errorOutput}`));
+      }
+    });
+    
+    // Handle process error
+    ffmpegProcess.on('error', (err) => {
+      reject(new Error(`Failed to start FFmpeg process: ${err.message}`));
+    });
+    
+    // Emit start event
+    emitter.emit('start', { command: 'ffmpeg', args: ffmpegArgs });
+  });
+}
+
+/**
+ * Gets image metadata using ffprobe
+ *
+ * @param {string} inputPath - Path to the image file
+ * @returns {Promise<Object>} - Promise that resolves with the image metadata
+ */
+async function getImageMetadata(inputPath) {
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-v', 'quiet',
+      '-print_format', 'json',
+      '-show_format',
+      '-show_streams',
+      inputPath
+    ];
+    
+    const ffprobeProcess = spawn('ffprobe', args);
+    
+    let output = '';
+    let errorOutput = '';
+    
+    ffprobeProcess.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    ffprobeProcess.stderr.on('data', (data) => {
+      errorOutput += data.toString();
+    });
+    
+    ffprobeProcess.on('close', (code) => {
+      if (code === 0) {
+        try {
+          const metadata = JSON.parse(output);
+          
+          // Extract relevant metadata
+          const result = {
+            format: {},
+            image: {}
+          };
+          
+          // Format metadata
+          if (metadata.format) {
+            result.format = {
+              filename: metadata.format.filename,
+              formatName: metadata.format.format_name,
+              size: parseInt(metadata.format.size) || 0
+            };
+          }
+          
+          // Image stream metadata
+          const imageStream = metadata.streams?.find(stream => stream.codec_type === 'video');
+          if (imageStream) {
+            result.image = {
+              codec: imageStream.codec_name,
+              width: imageStream.width,
+              height: imageStream.height,
+              pixelFormat: imageStream.pix_fmt,
+              colorSpace: imageStream.color_space
+            };
+            
+            // Calculate aspect ratio
+            if (imageStream.width && imageStream.height) {
+              result.image.aspectRatio = `${imageStream.width}:${imageStream.height}`;
+              
+              // Add display aspect ratio if available
+              if (imageStream.display_aspect_ratio) {
+                result.image.displayAspectRatio = imageStream.display_aspect_ratio;
+              }
+            }
+          }
+          
+          resolve(result);
+        } catch (error) {
+          reject(new Error(`Failed to parse metadata: ${error.message}`));
+        }
+      } else {
+        reject(new Error(`FFprobe failed with code ${code}: ${errorOutput}`));
+      }
+    });
+    
+    ffprobeProcess.on('error', (err) => {
+      reject(new Error(`Failed to start FFprobe process: ${err.message}`));
+    });
+  });
+}
+
+/**
+ * Transcodes multiple images in batch
+ *
+ * @param {Array<Object>} items - Array of objects with input and output paths and optional settings
+ * @param {Object} [globalOptions={}] - Global options to apply to all items
+ * @returns {Promise<Object>} - Promise that resolves with results for all items
+ */
+export async function transcodeImageBatch(items, globalOptions = {}) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error('Items array is required and must not be empty');
+  }
+  
+  const results = {
+    successful: [],
+    failed: []
+  };
+  
+  for (const item of items) {
+    try {
+      // Merge global options with item-specific options
+      const options = { ...globalOptions, ...item.options };
+      
+      // Transcode the image
+      const result = await transcodeImage(item.input, item.output, options);
+      
+      // Add to successful results
+      results.successful.push({
+        input: item.input,
+        output: result.outputPath,
+        metadata: result.metadata
+      });
+    } catch (error) {
+      // Add to failed results
+      results.failed.push({
+        input: item.input,
+        output: item.output,
+        error: error.message
+      });
+    }
+  }
+  
+  return results;
+}
+
+/**
  * Example usage with async/await
  *
  * ```javascript
@@ -1364,6 +1775,34 @@ export async function transcodeAudio(inputPath, outputPath, options = {}) {
  * });
  * ```
  *
+ * Example usage with image transcoding:
+ *
+ * ```javascript
+ * import { transcodeImage, transcodeImageBatch } from '@profullstack/transcoder';
+ *
+ * // Basic image transcoding
+ * const { outputPath } = await transcodeImage('input.png', 'output.webp');
+ *
+ * // Using image presets
+ * await transcodeImage('input.png', 'high-quality.jpg', { preset: 'jpeg-high' });
+ * await transcodeImage('input.png', 'thumbnail.jpg', { preset: 'thumbnail' });
+ *
+ * // Custom image options
+ * await transcodeImage('input.png', 'custom.webp', {
+ *   format: 'webp',
+ *   quality: 85,
+ *   resize: { width: 800, height: 600, fit: 'inside' },
+ *   rotate: 90,
+ *   optimize: true
+ * });
+ *
+ * // Batch processing
+ * const results = await transcodeImageBatch([
+ *   { input: 'image1.png', output: 'image1.webp' },
+ *   { input: 'image2.jpg', output: 'image2.webp' }
+ * ], { quality: 85, optimize: true });
+ * ```
+ *
  * Available presets:
  * - instagram: Square format (1080x1080) optimized for Instagram feed
  * - instagram-stories: Vertical format (1080x1920) optimized for Instagram stories
@@ -1382,4 +1821,16 @@ export async function transcodeAudio(inputPath, outputPath, options = {}) {
  * - mp3-high: High quality MP3 (320k)
  * - mp3-medium: Medium quality MP3 (192k)
  * - mp3-low: Low quality MP3 (96k)
+ * - jpeg-high: High quality JPEG (95%)
+ * - jpeg-medium: Medium quality JPEG (85%)
+ * - jpeg-low: Low quality JPEG (70%)
+ * - webp-high: High quality WebP (90%)
+ * - webp-medium: Medium quality WebP (80%)
+ * - webp-low: Low quality WebP (65%)
+ * - png: Standard PNG
+ * - png-optimized: Optimized PNG
+ * - avif-high: High quality AVIF (80%)
+ * - avif-medium: Medium quality AVIF (60%)
+ * - thumbnail: Thumbnail optimized (300x300)
+ * - social-media: Social media optimized (1200x630)
  */

@@ -30,6 +30,8 @@ coverage/
 
 # Generated test videos
 test-videos/output
+test-images/output
+test-audio/output
 
 # OS specific files
 .DS_Store
