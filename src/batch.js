@@ -9,6 +9,7 @@ import { EventEmitter } from 'events';
 import { transcode } from './video.js';
 import { transcodeAudio } from './audio.js';
 import { transcodeImage } from './image.js';
+import { getPreset } from '../presets.js';
 
 /**
  * BatchProcessEmitter class for emitting batch processing events
@@ -30,6 +31,59 @@ export const SUPPORTED_EXTENSIONS = {
 };
 
 /**
+ * Default output extensions for different media types and presets
+ */
+export const DEFAULT_OUTPUT_EXTENSIONS = {
+  video: {
+    default: '.mp4',
+    presets: {
+      'web': '.mp4',
+      'mobile': '.mp4',
+      'hd': '.mp4',
+      'youtube-hd': '.mp4',
+      'youtube-4k': '.mp4',
+      'instagram': '.mp4',
+      'twitter': '.mp4',
+      'facebook': '.mp4',
+      'tiktok': '.mp4',
+      'vimeo-hd': '.mp4'
+    }
+  },
+  audio: {
+    default: '.mp3',
+    presets: {
+      'audio-high': '.aac',
+      'audio-medium': '.aac',
+      'audio-low': '.aac',
+      'audio-voice': '.aac',
+      'mp3-high': '.mp3',
+      'mp3-medium': '.mp3',
+      'mp3-low': '.mp3'
+    }
+  },
+  image: {
+    default: '.jpg',
+    presets: {
+      'jpeg-high': '.jpg',
+      'jpeg-medium': '.jpg',
+      'jpeg-low': '.jpg',
+      'webp-high': '.webp',
+      'webp-medium': '.webp',
+      'webp-low': '.webp',
+      'png': '.png',
+      'png-optimized': '.png',
+      'avif-high': '.avif',
+      'avif-medium': '.avif',
+      'thumbnail': '.jpg',
+      'social-media': '.jpg',
+      'square': '.png',
+      'square-white': '.jpg',
+      'instagram-square': '.jpg'
+    }
+  }
+};
+
+/**
  * Determines the media type based on file extension
  * 
  * @param {string} filePath - Path to the file
@@ -47,6 +101,31 @@ function getMediaType(filePath) {
   }
   
   return null;
+}
+
+/**
+ * Get the appropriate output extension based on media type and preset
+ * 
+ * @param {string} mediaType - Media type ('video', 'audio', 'image')
+ * @param {Object} settings - Batch processing settings
+ * @returns {string} - Output file extension (e.g., '.mp4', '.mp3', '.jpg')
+ */
+function getOutputExtension(mediaType, settings) {
+  // If an output extension is explicitly specified, use it
+  if (settings.outputExtension) {
+    return settings.outputExtension;
+  }
+  
+  // Get the preset name if specified
+  const presetName = settings.transcodeOptions?.preset?.toLowerCase();
+  
+  // If a preset is specified and there's a default extension for it, use it
+  if (presetName && DEFAULT_OUTPUT_EXTENSIONS[mediaType]?.presets?.[presetName]) {
+    return DEFAULT_OUTPUT_EXTENSIONS[mediaType].presets[presetName];
+  }
+  
+  // Otherwise, use the default extension for the media type
+  return DEFAULT_OUTPUT_EXTENSIONS[mediaType]?.default || path.extname(filePath);
 }
 
 /**
@@ -117,7 +196,123 @@ export async function scanDirectory(dirPath, options = {}) {
 }
 
 /**
- * Processes a batch of files
+ * Process a single file
+ * 
+ * @param {string} filePath - Path to the file to process
+ * @param {Object} settings - Batch processing settings
+ * @param {BatchProcessEmitter} emitter - Batch process emitter
+ * @param {number} index - Index of the file in the batch
+ * @returns {Promise<Object>} - Promise that resolves with the processing result
+ */
+async function processFile(filePath, settings, emitter, index) {
+  try {
+    // Determine media type
+    const mediaType = getMediaType(filePath);
+    if (!mediaType) {
+      throw new Error(`Unsupported file type: ${filePath}`);
+    }
+    
+    // Get the appropriate output extension
+    const outputExt = getOutputExtension(mediaType, settings);
+    
+    // Generate output path
+    const fileName = path.basename(filePath, path.extname(filePath));
+    const outputFileName = `${settings.outputPrefix}${fileName}${settings.outputSuffix}${outputExt}`;
+    const outputPath = path.join(settings.outputDir, outputFileName);
+    
+    // Emit file start event
+    emitter.emit('fileStart', { 
+      filePath, 
+      outputPath, 
+      mediaType,
+      index
+    });
+    
+    // Create a progress callback function
+    const progressCallback = (progress) => {
+      // Only log progress details if verbose is enabled
+      if (settings.verbose) {
+        console.log('Progress callback called:', progress);
+      }
+      
+      emitter.emit('fileProgress', { 
+        filePath,
+        outputPath,
+        mediaType,
+        percent: progress.time && progress.duration ? 
+          Math.min(100, Math.round((progress.time / progress.duration) * 100)) : 0,
+        ...progress
+      });
+    };
+    
+    // Add the progress callback to the transcode options
+    const transcodeOptionsWithProgress = {
+      ...settings.transcodeOptions,
+      onProgress: progressCallback,
+      verbose: settings.verbose
+    };
+    
+    // Process file based on media type
+    let result;
+    
+    if (mediaType === 'video') {
+      // Emit initial progress
+      emitter.emit('fileProgress', { filePath, outputPath, mediaType, percent: 0 });
+      
+      result = await transcode(filePath, outputPath, transcodeOptionsWithProgress);
+    } else if (mediaType === 'audio') {
+      // For audio, we don't have real-time progress, so emit a few progress updates
+      emitter.emit('fileProgress', { filePath, outputPath, mediaType, percent: 25 });
+      result = await transcodeAudio(filePath, outputPath, transcodeOptionsWithProgress);
+      emitter.emit('fileProgress', { filePath, outputPath, mediaType, percent: 75 });
+    } else if (mediaType === 'image') {
+      // For images, we don't have real-time progress, so emit a few progress updates
+      emitter.emit('fileProgress', { filePath, outputPath, mediaType, percent: 25 });
+      result = await transcodeImage(filePath, outputPath, transcodeOptionsWithProgress);
+      emitter.emit('fileProgress', { filePath, outputPath, mediaType, percent: 75 });
+    }
+    
+    // Emit 100% progress to ensure the progress bar is completed
+    emitter.emit('fileProgress', { filePath, outputPath, mediaType, percent: 100 });
+    
+    // Emit file complete event
+    emitter.emit('fileComplete', { 
+      filePath, 
+      outputPath, 
+      mediaType,
+      metadata: result.metadata,
+      success: true
+    });
+    
+    return {
+      input: filePath,
+      output: outputPath,
+      mediaType,
+      metadata: result.metadata,
+      success: true
+    };
+  } catch (error) {
+    // Only log detailed error if verbose is enabled
+    if (settings.verbose) {
+      console.error('Error processing file:', error);
+    }
+    
+    // Emit file error event
+    emitter.emit('fileError', { 
+      filePath, 
+      error: error.message
+    });
+    
+    return {
+      input: filePath,
+      error: error.message,
+      success: false
+    };
+  }
+}
+
+/**
+ * Processes a batch of files in parallel
  * 
  * @param {Array<string>} filePaths - Array of file paths to process
  * @param {Object} options - Batch processing options
@@ -127,11 +322,13 @@ export async function scanDirectory(dirPath, options = {}) {
  * @param {string} [options.outputPrefix=''] - Prefix for output filenames
  * @param {string} [options.outputSuffix=''] - Suffix for output filenames
  * @param {number} [options.concurrency=1] - Number of files to process concurrently
+ * @param {BatchProcessEmitter} [options.emitter] - Custom emitter for batch processing events
+ * @param {boolean} [options.verbose=false] - Whether to log verbose output
  * @returns {Promise<Object>} - Promise that resolves with batch processing results
  */
 export async function batchProcess(filePaths, options) {
-  // Create an emitter for batch processing events
-  const emitter = new BatchProcessEmitter();
+  // Create an emitter for batch processing events or use the provided one
+  const emitter = options.emitter || new BatchProcessEmitter();
   
   // Default options
   const settings = {
@@ -140,7 +337,8 @@ export async function batchProcess(filePaths, options) {
     outputExtension: null,
     outputPrefix: '',
     outputSuffix: '',
-    concurrency: 1,
+    concurrency: 2, // Default to 2 concurrent processes
+    verbose: false,
     ...options
   };
   
@@ -157,94 +355,103 @@ export async function batchProcess(filePaths, options) {
     failed: []
   };
   
-  // Process files
+  // Emit start event
   emitter.emit('start', { total: filePaths.length });
   
-  // Process files in batches based on concurrency
-  for (let i = 0; i < filePaths.length; i += settings.concurrency) {
-    const batch = filePaths.slice(i, i + settings.concurrency);
-    const batchPromises = batch.map(async (filePath) => {
-      try {
-        // Determine media type
-        const mediaType = getMediaType(filePath);
-        if (!mediaType) {
-          throw new Error(`Unsupported file type: ${filePath}`);
-        }
-        
-        // Generate output path
-        const fileName = path.basename(filePath, path.extname(filePath));
-        const outputExt = settings.outputExtension || path.extname(filePath);
-        const outputFileName = `${settings.outputPrefix}${fileName}${settings.outputSuffix}${outputExt}`;
-        const outputPath = path.join(settings.outputDir, outputFileName);
-        
-        // Emit file start event
-        emitter.emit('fileStart', { 
-          filePath, 
-          outputPath, 
-          mediaType,
-          index: results.completed + results.failed.length + 1
-        });
-        
-        // Process file based on media type
-        let result;
-        
-        if (mediaType === 'video') {
-          result = await transcode(filePath, outputPath, settings.transcodeOptions);
-        } else if (mediaType === 'audio') {
-          result = await transcodeAudio(filePath, outputPath, settings.transcodeOptions);
-        } else if (mediaType === 'image') {
-          result = await transcodeImage(filePath, outputPath, settings.transcodeOptions);
-        }
-        
-        // Add to successful results
-        results.successful.push({
-          input: filePath,
-          output: outputPath,
-          mediaType,
-          metadata: result.metadata
-        });
-        
-        // Emit file complete event
-        emitter.emit('fileComplete', { 
-          filePath, 
-          outputPath, 
-          mediaType,
-          metadata: result.metadata,
-          success: true
-        });
-      } catch (error) {
-        // Add to failed results
-        results.failed.push({
-          input: filePath,
-          error: error.message
-        });
-        
-        // Emit file error event
-        emitter.emit('fileError', { 
-          filePath, 
-          error: error.message
-        });
+  // Process files in parallel with concurrency limit
+  return new Promise((resolve) => {
+    // Track active promises
+    let activePromises = 0;
+    let fileIndex = 0;
+    let completedCount = 0;
+    
+    // Function to process the next file
+    const processNextFile = () => {
+      // If we've processed all files and no active promises, we're done
+      if (fileIndex >= filePaths.length && activePromises === 0) {
+        // Emit complete event
+        emitter.emit('complete', results);
+        resolve({ results, emitter });
+        return;
       }
       
-      // Update completed count
-      results.completed++;
+      // If we've reached the end of the files, just wait for active promises
+      if (fileIndex >= filePaths.length) {
+        return;
+      }
       
-      // Emit progress event
-      emitter.emit('progress', { 
-        completed: results.completed,
-        total: results.total,
-        percent: Math.round((results.completed / results.total) * 100)
-      });
-    });
+      // If we've reached concurrency limit, wait for some promises to complete
+      if (activePromises >= settings.concurrency) {
+        return;
+      }
+      
+      // Get the next file
+      const filePath = filePaths[fileIndex];
+      fileIndex++;
+      
+      // Increment active promises
+      activePromises++;
+      
+      // Process the file
+      processFile(filePath, settings, emitter, fileIndex)
+        .then((result) => {
+          // Update results
+          if (result.success) {
+            results.successful.push(result);
+          } else {
+            results.failed.push(result);
+          }
+          
+          // Update completed count
+          completedCount++;
+          results.completed = completedCount;
+          
+          // Emit progress event
+          emitter.emit('progress', { 
+            completed: completedCount,
+            total: filePaths.length,
+            percent: Math.round((completedCount / filePaths.length) * 100)
+          });
+        })
+        .catch((error) => {
+          // Log error
+          if (settings.verbose) {
+            console.error('Error processing file:', error);
+          }
+          
+          // Update results
+          results.failed.push({
+            input: filePath,
+            error: error.message,
+            success: false
+          });
+          
+          // Update completed count
+          completedCount++;
+          results.completed = completedCount;
+          
+          // Emit progress event
+          emitter.emit('progress', { 
+            completed: completedCount,
+            total: filePaths.length,
+            percent: Math.round((completedCount / filePaths.length) * 100)
+          });
+        })
+        .finally(() => {
+          // Decrement active promises
+          activePromises--;
+          
+          // Process next file
+          processNextFile();
+        });
+      
+      // Try to process more files if we haven't reached concurrency limit
+      processNextFile();
+    };
     
-    // Wait for batch to complete
-    await Promise.all(batchPromises);
-  }
-  
-  // Emit complete event
-  emitter.emit('complete', results);
-  
-  return { results, emitter };
+    // Start processing files
+    processNextFile();
+  });
 }
 
 /**
@@ -261,6 +468,11 @@ export async function batchProcessDirectory(dirPath, options = {}, scanOptions =
   
   if (filePaths.length === 0) {
     throw new Error(`No supported media files found in directory: ${dirPath}`);
+  }
+  
+  // Only log detailed file count if verbose is enabled
+  if (options.verbose) {
+    console.log(`Found ${filePaths.length} files to process`);
   }
   
   // Process files

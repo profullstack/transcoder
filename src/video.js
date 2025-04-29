@@ -53,6 +53,14 @@ export async function transcode(inputPath, outputPath, options = {}) {
   const trimOptions = settings.trim;
   delete settings.trim;
   
+  // Extract onProgress callback if present
+  const onProgress = settings.onProgress;
+  delete settings.onProgress;
+  
+  // Extract verbose flag if present
+  const verbose = settings.verbose;
+  delete settings.verbose;
+  
   // Validate input and output paths
   await validatePaths(inputPath, outputPath, settings.overwrite);
   
@@ -61,6 +69,16 @@ export async function transcode(inputPath, outputPath, options = {}) {
     await checkFfmpeg();
   } catch (error) {
     throw error;
+  }
+  
+  // Get video duration for progress calculation
+  let duration = 0;
+  try {
+    duration = await getVideoDuration(inputPath);
+  } catch (error) {
+    if (verbose) {
+      console.warn(`Warning: Could not determine video duration: ${error.message}`);
+    }
   }
   
   // Build ffmpeg arguments
@@ -125,8 +143,10 @@ export async function transcode(inputPath, outputPath, options = {}) {
         if (!fs.existsSync(watermark.image)) {
           // Check if this is an intentional test case
           if (watermark.image.includes('intentionally-non-existent')) {
-            console.warn(`Notice: Using intentionally non-existent watermark image for testing: ${watermark.image}`);
-            console.warn('Skipping watermark for this test case');
+            if (verbose) {
+              console.warn(`Notice: Using intentionally non-existent watermark image for testing: ${watermark.image}`);
+              console.warn('Skipping watermark for this test case');
+            }
             // Skip watermark processing but continue with transcoding
             skipWatermark = true;
           } else {
@@ -199,7 +219,9 @@ export async function transcode(inputPath, outputPath, options = {}) {
         const margin = watermark.margin || 10;
         
         // Use drawtext filter directly for text watermarking
-        console.log('Using drawtext filter for text watermark');
+        if (verbose) {
+          console.log('Using drawtext filter for text watermark');
+        }
         
         // Use the position, opacity, and margin values already defined above
         
@@ -255,7 +277,9 @@ export async function transcode(inputPath, outputPath, options = {}) {
           for (const path of fontPaths) {
             if (fs.existsSync(path)) {
               fontFile = path;
-              console.log(`Using font: ${path}`);
+              if (verbose) {
+                console.log(`Using font: ${path}`);
+              }
               break;
             }
           }
@@ -269,10 +293,14 @@ export async function transcode(inputPath, outputPath, options = {}) {
               
               if (fontSearch && fs.existsSync(fontSearch)) {
                 fontFile = fontSearch;
-                console.log(`Using font: ${fontSearch}`);
+                if (verbose) {
+                  console.log(`Using font: ${fontSearch}`);
+                }
               }
             } catch (err) {
-              console.warn(`Warning: Could not find any TTF font on the system: ${err.message}`);
+              if (verbose) {
+                console.warn(`Warning: Could not find any TTF font on the system: ${err.message}`);
+              }
             }
           }
         }
@@ -280,11 +308,15 @@ export async function transcode(inputPath, outputPath, options = {}) {
         // Create drawtext filter with the font file if available
         let textFilter;
         if (fontFile && fs.existsSync(fontFile)) {
-          console.log(`Using font file: ${fontFile}`);
+          if (verbose) {
+            console.log(`Using font file: ${fontFile}`);
+          }
           textFilter = `drawtext=fontfile=${fontFile}:text='${watermark.text}':x=${x}:y=${y}:fontsize=${fontSize}:fontcolor=${fontColor}:box=1:boxcolor=black@0.8:boxborderw=10`;
         } else {
           // Fallback without fontfile - use a colored rectangle instead
-          console.warn('Warning: No suitable font found for text watermark. Using colored rectangle instead.');
+          if (verbose) {
+            console.warn('Warning: No suitable font found for text watermark. Using colored rectangle instead.');
+          }
           
           // Create a bright colored rectangle at the specified position
           let rectX, rectY;
@@ -335,8 +367,10 @@ export async function transcode(inputPath, outputPath, options = {}) {
         });
       }
     } catch (error) {
-      console.warn(`Warning: Failed to add watermark: ${error.message}`);
-      console.warn('Continuing transcoding without watermark...');
+      if (verbose) {
+        console.warn(`Warning: Failed to add watermark: ${error.message}`);
+        console.warn('Continuing transcoding without watermark...');
+      }
     }
   }
   
@@ -346,8 +380,10 @@ export async function transcode(inputPath, outputPath, options = {}) {
     ffmpegArgs.push('-vf', videoFilters.join(','));
     
     // Log the filter being used for debugging
-    console.log(`Using video filter: ${videoFilters.join(',')}`);
-  } else if (videoFilters.length === 0 && !settings.usingComplexFilter) {
+    if (verbose) {
+      console.log(`Using video filter: ${videoFilters.join(',')}`);
+    }
+  } else if (videoFilters.length === 0 && !settings.usingComplexFilter && verbose) {
     console.log('No video filters applied');
   }
   
@@ -402,7 +438,16 @@ export async function transcode(inputPath, outputPath, options = {}) {
       const progress = parseProgress(dataStr);
       
       if (progress) {
+        // Add duration to progress for percentage calculation
+        progress.duration = duration;
+        
+        // Emit progress event
         emitter.emit('progress', progress);
+        
+        // Call onProgress callback if provided
+        if (typeof onProgress === 'function') {
+          onProgress(progress);
+        }
       }
     });
     
@@ -414,7 +459,16 @@ export async function transcode(inputPath, outputPath, options = {}) {
       // FFmpeg outputs progress information to stderr as well
       const progress = parseProgress(dataStr);
       if (progress) {
+        // Add duration to progress for percentage calculation
+        progress.duration = duration;
+        
+        // Emit progress event
         emitter.emit('progress', progress);
+        
+        // Call onProgress callback if provided
+        if (typeof onProgress === 'function') {
+          onProgress(progress);
+        }
       }
       
       // Emit log event
@@ -441,14 +495,18 @@ export async function transcode(inputPath, outputPath, options = {}) {
               resolve({ outputPath, emitter, thumbnails, ffmpegCommand, metadata });
             } catch (thumbnailError) {
               // If thumbnail generation fails, still return the transcoded video
-              console.error(`Thumbnail generation failed: ${thumbnailError.message}`);
+              if (verbose) {
+                console.error(`Thumbnail generation failed: ${thumbnailError.message}`);
+              }
               resolve({ outputPath, emitter, ffmpegCommand, metadata });
             }
           } else {
             resolve({ outputPath, emitter, ffmpegCommand, metadata });
           }
         } catch (metadataError) {
-          console.warn(`Warning: Failed to extract metadata: ${metadataError.message}`);
+          if (verbose) {
+            console.warn(`Warning: Failed to extract metadata: ${metadataError.message}`);
+          }
           
           // Generate thumbnails if requested
           if (thumbnailOptions) {
@@ -458,7 +516,9 @@ export async function transcode(inputPath, outputPath, options = {}) {
               resolve({ outputPath, emitter, thumbnails, ffmpegCommand });
             } catch (thumbnailError) {
               // If thumbnail generation fails, still return the transcoded video
-              console.error(`Thumbnail generation failed: ${thumbnailError.message}`);
+              if (verbose) {
+                console.error(`Thumbnail generation failed: ${thumbnailError.message}`);
+              }
               resolve({ outputPath, emitter, ffmpegCommand });
             }
           } else {
@@ -517,7 +577,9 @@ export async function transcodeResponsive(inputPath, options = {}) {
     if (profileSet) {
       settings.profiles = profileSet;
     } else {
-      console.warn(`Warning: Profile set "${options.profileSet}" not found. Using default profiles.`);
+      if (options.verbose) {
+        console.warn(`Warning: Profile set "${options.profileSet}" not found. Using default profiles.`);
+      }
     }
   }
   
@@ -565,7 +627,9 @@ export async function transcodeResponsive(inputPath, options = {}) {
     
     // Transcode the video with this profile
     try {
-      console.log(`Transcoding ${profile} version: ${outputPath}`);
+      if (options.verbose) {
+        console.log(`Transcoding ${profile} version: ${outputPath}`);
+      }
       const output = await transcode(inputPath, outputPath, transcodeOptions);
       
       // Store the result
@@ -581,7 +645,9 @@ export async function transcodeResponsive(inputPath, options = {}) {
         result.outputs[profile].thumbnails = output.thumbnails;
       }
     } catch (error) {
-      console.error(`Failed to transcode ${profile} version: ${error.message}`);
+      if (options.verbose) {
+        console.error(`Failed to transcode ${profile} version: ${error.message}`);
+      }
       // Continue with other profiles even if one fails
     }
   }
