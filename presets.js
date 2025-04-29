@@ -297,6 +297,126 @@ export const LOW_BANDWIDTH_PRESET = {
 };
 
 /**
+ * Audio Presets for different quality levels and use cases
+ */
+
+/**
+ * High Quality Audio Preset
+ * - Audio codec: AAC
+ * - Bitrate: 320k
+ * - Sample rate: 48000 Hz
+ * - Channels: 2 (stereo)
+ * - Optimized for high-quality music and professional audio
+ */
+export const AUDIO_HIGH_QUALITY_PRESET = {
+  audioCodec: 'aac',
+  audioBitrate: '320k',
+  audioSampleRate: 48000,
+  audioChannels: 2,
+  audioProfile: 'aac_low',
+  normalize: false
+};
+
+/**
+ * Medium Quality Audio Preset
+ * - Audio codec: AAC
+ * - Bitrate: 192k
+ * - Sample rate: 44100 Hz
+ * - Channels: 2 (stereo)
+ * - Good balance between quality and file size
+ */
+export const AUDIO_MEDIUM_QUALITY_PRESET = {
+  audioCodec: 'aac',
+  audioBitrate: '192k',
+  audioSampleRate: 44100,
+  audioChannels: 2,
+  audioProfile: 'aac_low',
+  normalize: false
+};
+
+/**
+ * Low Quality Audio Preset
+ * - Audio codec: AAC
+ * - Bitrate: 96k
+ * - Sample rate: 44100 Hz
+ * - Channels: 2 (stereo)
+ * - Optimized for smaller file size
+ */
+export const AUDIO_LOW_QUALITY_PRESET = {
+  audioCodec: 'aac',
+  audioBitrate: '96k',
+  audioSampleRate: 44100,
+  audioChannels: 2,
+  audioProfile: 'aac_low',
+  normalize: false
+};
+
+/**
+ * Voice Optimized Audio Preset
+ * - Audio codec: AAC
+ * - Bitrate: 128k
+ * - Sample rate: 44100 Hz
+ * - Channels: 1 (mono)
+ * - Optimized for voice recordings, podcasts, etc.
+ */
+export const AUDIO_VOICE_PRESET = {
+  audioCodec: 'aac',
+  audioBitrate: '128k',
+  audioSampleRate: 44100,
+  audioChannels: 1,
+  audioProfile: 'aac_low',
+  normalize: true
+};
+
+/**
+ * MP3 High Quality Preset
+ * - Audio codec: libmp3lame
+ * - Bitrate: 320k
+ * - Sample rate: 44100 Hz
+ * - Channels: 2 (stereo)
+ * - Optimized for high-quality MP3 files
+ */
+export const MP3_HIGH_QUALITY_PRESET = {
+  audioCodec: 'libmp3lame',
+  audioBitrate: '320k',
+  audioSampleRate: 44100,
+  audioChannels: 2,
+  normalize: false
+};
+
+/**
+ * MP3 Medium Quality Preset
+ * - Audio codec: libmp3lame
+ * - Bitrate: 192k
+ * - Sample rate: 44100 Hz
+ * - Channels: 2 (stereo)
+ * - Good balance between quality and file size for MP3
+ */
+export const MP3_MEDIUM_QUALITY_PRESET = {
+  audioCodec: 'libmp3lame',
+  audioBitrate: '192k',
+  audioSampleRate: 44100,
+  audioChannels: 2,
+  normalize: false
+};
+
+/**
+ * MP3 Low Quality Preset
+ * - Audio codec: libmp3lame
+ * - Bitrate: 96k
+ * - Sample rate: 44100 Hz
+ * - Channels: 2 (stereo)
+ * - Optimized for smaller file size MP3
+ */
+export const MP3_LOW_QUALITY_PRESET = {
+  audioCodec: 'libmp3lame',
+  audioBitrate: '96k',
+  audioSampleRate: 44100,
+  audioChannels: 2,
+  normalize: false
+};
+
+/**
  * Map of preset names to preset configurations
  */
 export const PRESETS = {
@@ -312,7 +432,15 @@ export const PRESETS = {
   'mobile': MOBILE_PRESET,
   'hd': HD_PRESET,
   'tablet': TABLET_PRESET,
-  'low-bandwidth': LOW_BANDWIDTH_PRESET
+  'low-bandwidth': LOW_BANDWIDTH_PRESET,
+  // Audio presets
+  'audio-high': AUDIO_HIGH_QUALITY_PRESET,
+  'audio-medium': AUDIO_MEDIUM_QUALITY_PRESET,
+  'audio-low': AUDIO_LOW_QUALITY_PRESET,
+  'audio-voice': AUDIO_VOICE_PRESET,
+  'mp3-high': MP3_HIGH_QUALITY_PRESET,
+  'mp3-medium': MP3_MEDIUM_QUALITY_PRESET,
+  'mp3-low': MP3_LOW_QUALITY_PRESET
 };
 
 /**

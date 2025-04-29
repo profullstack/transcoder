@@ -55,7 +55,7 @@ describe('Smart Presets', function() {
   
   describe('PRESETS object', function() {
     it('should contain all the expected presets', function() {
-      const expectedPresets = [
+      const expectedVideoPresets = [
         'instagram',
         'instagram-stories',
         'youtube-hd',
@@ -68,19 +68,57 @@ describe('Smart Presets', function() {
         'mobile'
       ];
       
-      expectedPresets.forEach(presetName => {
+      const expectedAudioPresets = [
+        'audio-high',
+        'audio-medium',
+        'audio-low',
+        'audio-voice',
+        'mp3-high',
+        'mp3-medium',
+        'mp3-low'
+      ];
+      
+      // Check video presets
+      expectedVideoPresets.forEach(presetName => {
+        expect(PRESETS).to.have.property(presetName);
+        expect(PRESETS[presetName]).to.be.an('object');
+      });
+      
+      // Check audio presets
+      expectedAudioPresets.forEach(presetName => {
         expect(PRESETS).to.have.property(presetName);
         expect(PRESETS[presetName]).to.be.an('object');
       });
     });
     
     it('should have valid properties for each preset', function() {
-      Object.values(PRESETS).forEach(preset => {
+      // Separate video and audio presets
+      const videoPresetNames = [
+        'instagram', 'instagram-stories', 'youtube-hd', 'youtube-4k',
+        'twitter', 'facebook', 'tiktok', 'vimeo-hd', 'web', 'mobile',
+        'hd', 'tablet', 'low-bandwidth'
+      ];
+      
+      const audioPresetNames = [
+        'audio-high', 'audio-medium', 'audio-low', 'audio-voice',
+        'mp3-high', 'mp3-medium', 'mp3-low'
+      ];
+      
+      // Check video presets
+      videoPresetNames.forEach(presetName => {
+        const preset = PRESETS[presetName];
         expect(preset).to.have.property('videoCodec').that.is.a('string');
         expect(preset).to.have.property('audioCodec').that.is.a('string');
         expect(preset).to.have.property('videoBitrate').that.is.a('string');
         expect(preset).to.have.property('audioBitrate').that.is.a('string');
         expect(preset).to.have.property('preset').that.is.a('string');
+      });
+      
+      // Check audio presets
+      audioPresetNames.forEach(presetName => {
+        const preset = PRESETS[presetName];
+        expect(preset).to.have.property('audioCodec').that.is.a('string');
+        expect(preset).to.have.property('audioBitrate').that.is.a('string');
       });
     });
   });

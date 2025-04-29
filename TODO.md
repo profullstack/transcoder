@@ -213,7 +213,7 @@ const results = await transcodeImageBatch([
 
 ### Next Features to Implement
 1. 🔄 Batch Processing (High utility, low effort) - NEXT PRIORITY
-2. 🔊 Audio Transcoding (Expands functionality, moderate effort)
+2. ✅ 🔊 Audio Transcoding (Expands functionality, moderate effort) - IMPLEMENTED
 3. 🖼️ Image Transcoding (Expands functionality, moderate effort)
 
 These features will significantly enhance the value proposition of @profullstack/transcoder while maintaining its core philosophy of simplicity and efficiency.
