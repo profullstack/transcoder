@@ -8,7 +8,8 @@
     "index.js",
     "presets.js",
     "README.md",
-    "bin"
+    "bin",
+    "src"
   ],
   "repository": {
     "type": "git",
