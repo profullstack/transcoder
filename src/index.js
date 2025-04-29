@@ -65,3 +65,18 @@ export {
   createTranscodeProgressBar,
   updateProgressBar
 } from './cli.js';
+
+// Export batch processing functionality
+export {
+  BatchProcessEmitter,
+  SUPPORTED_EXTENSIONS,
+  scanDirectory,
+  batchProcess,
+  batchProcessDirectory
+} from './batch.js';
+
+// Export terminal UI functionality
+export {
+  createBatchUI,
+  attachBatchUI
+} from './terminal-ui.js';

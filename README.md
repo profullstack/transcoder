@@ -25,6 +25,7 @@ A lightweight Node.js module for transcoding videos to web-friendly MP4 format u
 - Customizable encoding options
 - Smart Presets for popular platforms (Instagram, YouTube, Twitter, etc.)
 - Thumbnail Generation at specified intervals or timestamps
+- Batch processing of multiple files with a fancy terminal UI
 - No file storage - just passes through to FFmpeg
 - Lightweight with minimal dependencies
 
@@ -256,6 +257,77 @@ async function extractMetadata() {
 extractMetadata();
 ```
 
+### Batch Processing
+
+The module supports batch processing of multiple files with a fancy terminal UI:
+
+```javascript
+import { batchProcessDirectory, attachBatchUI } from '@profullstack/transcoder';
+
+// Directory containing media files
+const inputDir = './videos';
+
+// Batch processing options
+const batchOptions = {
+  // Output directory
+  outputDir: './processed',
+  
+  // Add a prefix to output filenames
+  outputPrefix: 'processed-',
+  
+  // Transcoding options (same as for single file transcoding)
+  transcodeOptions: {
+    // Use the 'web' preset
+    preset: 'web',
+    
+    // Generate thumbnails
+    thumbnails: {
+      count: 1,
+      format: 'jpg'
+    },
+    
+    // Always overwrite existing files
+    overwrite: true
+  },
+  
+  // Process 2 files concurrently
+  concurrency: 2
+};
+
+// Scan options
+const scanOptions = {
+  // Only process video files
+  mediaTypes: ['video'],
+  
+  // Recursively scan subdirectories
+  recursive: true
+};
+
+console.log(`Starting batch processing of files in ${inputDir}...`);
+
+// Start batch processing
+batchProcessDirectory(inputDir, batchOptions, scanOptions)
+  .then(({ results, emitter }) => {
+    // Attach terminal UI to emitter
+    const ui = attachBatchUI(emitter);
+    
+    // Listen for batch processing completion
+    emitter.on('complete', () => {
+      // Give user time to see the results before exiting
+      setTimeout(() => {
+        ui.destroy();
+        
+        // Print summary
+        console.log(`\nBatch processing completed!`);
+        console.log(`Processed ${results.total} files: ${results.successful.length} successful, ${results.failed.length} failed`);
+      }, 3000);
+    });
+  })
+  .catch(err => {
+    console.error(`Error: ${err.message}`);
+  });
+```
+
 ### Using Smart Presets
 
 The module includes pre-configured settings optimized for specific platforms and use cases:
@@ -388,6 +460,12 @@ transcoder input.mp4 output.mp4 --width 1280 --height 720 --bitrate 2M
 
 # Trim a video
 transcoder input.mp4 output.mp4 --trim --start 00:00:10 --end 00:00:30
+
+# Batch process all videos in a directory
+transcoder --path ./videos --preset web --output-dir ./processed
+
+# Batch process with recursive directory scanning
+transcoder --path ./videos --recursive --preset mobile --output-dir ./processed
 ```
 
 The CLI tool features a cool progress bar with real-time information:
@@ -400,6 +478,14 @@ The CLI tool features a cool progress bar with real-time information:
 - Elapsed time
 - Estimated time remaining (ETA)
 - Fast and efficient thumbnail generation
+
+For batch processing, the CLI tool provides a fancy terminal UI:
+
+- Overall progress tracking
+- Individual file progress
+- Real-time statistics (completed files, success/failure rate)
+- Estimated time remaining
+- Detailed log output
 
 #### CLI Options
 
@@ -431,6 +517,15 @@ The CLI tool features a cool progress bar with real-time information:
 | `--watermark-font-color` | Font color for text watermark |
 | `--watermark-font` | Path to font file for text watermark |
 | `--watermark-box-color` | Background box color for text watermark |
+| `--path` | Path to directory containing media files for batch processing |
+| `--recursive` | Recursively process files in subdirectories (for batch processing) |
+| `--output-dir` | Output directory for batch processed files |
+| `--output-prefix` | Prefix to add to output filenames (for batch processing) |
+| `--output-suffix` | Suffix to add to output filenames (for batch processing) |
+| `--output-extension` | Extension for output files (for batch processing) |
+| `--media-types` | Media types to process (for batch processing) |
+| `--concurrency` | Number of files to process concurrently (for batch processing) |
+| `--fancy-ui` | Use fancy terminal UI for batch processing |
 | `--verbose`, `-v` | Show detailed progress information |
 | `--help`, `-?` | Show help |
 
@@ -460,6 +555,9 @@ transcoder input.mp4 output.mp4 --preset youtube-hd --thumbnails 3
 
 # Generate thumbnails only
 transcoder --thumbnails-only input.mp4 --count 5
+
+# Batch processing
+transcoder --path ./videos --preset web --output-dir ./processed
 ```
 
 ## API Reference
@@ -549,6 +647,46 @@ Transcodes multiple images in batch with shared global options.
   - `successful` (Array): Array of successfully transcoded images with metadata
   - `failed` (Array): Array of failed operations with error messages
 
+### batchProcessDirectory(dirPath, [batchOptions], [scanOptions])
+
+Processes all media files in a directory.
+
+**Parameters:**
+
+- `dirPath` (string): Path to the directory containing media files
+- `batchOptions` (object, optional): Batch processing options
+  - `outputDir` (string): Directory where processed files will be saved
+  - `outputPrefix` (string): Prefix to add to output filenames
+  - `outputSuffix` (string): Suffix to add to output filenames
+  - `outputExtension` (string): Extension for output files
+  - `transcodeOptions` (object): Options for transcoding (same as for single file transcoding)
+  - `concurrency` (number): Number of files to process concurrently
+- `scanOptions` (object, optional): Options for scanning the directory
+  - `mediaTypes` (array): Media types to process ('video', 'audio', 'image')
+  - `recursive` (boolean): Whether to scan subdirectories
+
+**Returns:**
+
+- Promise that resolves with an object containing:
+  - `results` (object): Results of batch processing
+    - `total` (number): Total number of files processed
+    - `successful` (array): Array of successfully processed files with metadata
+    - `failed` (array): Array of failed operations with error messages
+  - `emitter` (BatchProcessEmitter): Event emitter for progress tracking
+
+### attachBatchUI(emitter, [options])
+
+Attaches a terminal UI to a batch process emitter.
+
+**Parameters:**
+
+- `emitter` (BatchProcessEmitter): Batch process emitter
+- `options` (object, optional): Terminal UI options
+
+**Returns:**
+
+- Terminal UI object with methods for updating the UI
+
 ### generateThumbnails(inputPath, outputDir, [options])
 
 Generates thumbnails from a video file without transcoding.
@@ -567,6 +705,27 @@ Generates thumbnails from a video file without transcoding.
 **Returns:**
 
 - Promise that resolves with an array of thumbnail paths
+
+### BatchProcessEmitter Events
+
+The emitter returned by the batchProcessDirectory function emits the following events:
+
+- `start`: Emitted when the batch processing starts
+  - Payload: `{ total: number }`
+- `fileStart`: Emitted when processing of a file starts
+  - Payload: `{ filePath: string, outputPath: string, mediaType: string, index: number }`
+- `fileProgress`: Emitted when FFmpeg reports progress for a file
+  - Payload: `{ percent: number }`
+- `fileComplete`: Emitted when processing of a file completes successfully
+  - Payload: `{ filePath: string, outputPath: string, mediaType: string, metadata: object, success: true }`
+- `fileError`: Emitted when processing of a file fails
+  - Payload: `{ filePath: string, error: string }`
+- `progress`: Emitted when overall batch progress updates
+  - Payload: `{ completed: number, total: number, percent: number }`
+- `complete`: Emitted when batch processing completes
+  - Payload: `{ total: number, completed: number, successful: array, failed: array }`
+- `log`: Emitted for log messages
+  - Payload: `string`
 
 ### TranscodeEmitter Events
 
@@ -665,6 +824,12 @@ pnpm example:image
 
 # Run the Square Padding example
 pnpm example:square
+
+# Run the Batch Processing example
+pnpm example:batch
+
+# Run the CLI Examples script
+pnpm example:cli
 ```
 
 This will:
@@ -690,6 +855,44 @@ The module includes the following test files:
 - `test/responsive.test.js` - Tests for the Responsive Video Profiles feature
 - `test/audio.test.js` - Tests for the Audio Transcoding feature
 - `test/image.test.js` - Tests for the Image Transcoding feature
+- `test/batch.test.js` - Tests for the Batch Processing feature
+- `test/terminal-ui.test.js` - Tests for the Terminal UI feature
+
+### CLI Examples
+
+The module includes a script with common CLI use cases that you can run to see the transcoder in action:
+
+```bash
+# Run the CLI examples script
+pnpm example:cli
+```
+
+This script demonstrates various use cases for the CLI tool:
+
+1. Basic transcoding
+2. Using a preset (YouTube HD)
+3. Custom resolution and bitrate
+4. Generate thumbnails during transcoding
+5. Generate thumbnails only (no transcoding)
+6. Add a watermark
+7. Trim a video
+8. Audio transcoding - MP3 to AAC
+9. Audio transcoding - Extract audio from video
+10. Image transcoding - JPEG to WebP
+11. Image transcoding - Square padding
+12. Batch process all videos in a directory
+13. Batch process with recursive directory scanning
+14. Batch process with output filename customization
+15. Batch process with concurrent processing
+16. Batch process specific media types
+17. Batch process audio files
+18. Batch process image files
+
+You can also run the script directly:
+
+```bash
+./examples/example.sh
+```
 
 These tests verify the core functionality of the module, including error handling, option processing, preset handling, thumbnail generation, watermarking, trimming, responsive profiles, audio transcoding, and image transcoding.
 

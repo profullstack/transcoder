@@ -24,6 +24,8 @@
     "test:trimming": "mocha test/trimming.test.js",
     "test:audio": "mocha test/audio.test.js",
     "test:image": "mocha test/image.test.js",
+    "test:batch": "mocha test/batch.test.js",
+    "test:terminal-ui": "mocha test/terminal-ui.test.js",
     "generate-test-video": "node scripts/generate-test-video.js",
     "generate-test-audio": "node scripts/generate-test-audio.js",
     "example": "node examples/basic-usage.js",
@@ -36,9 +38,12 @@
     "example:audio": "node examples/audio-transcoding.js",
     "example:image": "node examples/image-transcoding.js",
     "example:square": "node examples/square-padding.js",
+    "example:batch": "node examples/batch-processing.js",
+    "example:cli": "./examples/example.sh",
     "install-ffmpeg": "./bin/build-ffmpeg.sh",
     "install-imagemagick": "./bin/install-imagemagick.sh",
-    "cli": "./bin/transcoder.js"
+    "cli": "./bin/transcoder.js",
+    "batch": "./bin/transcoder.js --path ./test-videos/input --output-dir ./test-videos/output/batch --preset web"
   },
   "bin": {
     "install-ffmpeg": "./bin/build-ffmpeg.sh",
@@ -72,6 +77,7 @@
   "packageManager": "pnpm@10.6.5",
   "dependencies": {
     "ansi-colors": "^4.1.3",
+    "blessed": "^0.1.81",
     "cli-progress": "^3.12.0",
     "imagemagick": "^0.1.3",
     "yargs": "^17.7.2"

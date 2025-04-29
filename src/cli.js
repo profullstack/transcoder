@@ -49,11 +49,13 @@ export function formatFileSize(bytes) {
  */
 export function configureCommandLine() {
   return yargs(hideBin(process.argv))
-    .usage('Usage: $0 <input> <output> [options]')
+    .usage('Usage: $0 <input> <output> [options] OR $0 --path <directory> [options]')
     .example('$0 input.mp4 output.mp4 --preset youtube-hd', 'Transcode a video using the youtube-hd preset')
     .example('$0 input.mp4 output.mp4 --thumbnails 3', 'Transcode a video and generate 3 thumbnails')
     .example('$0 input.mp4 output.mp4 --width 1280 --height 720', 'Transcode a video to 720p resolution')
     .example('$0 --thumbnails-only input.mp4 --count 5', 'Generate 5 thumbnails without transcoding')
+    .example('$0 --path ./videos --preset web', 'Batch process all videos in the directory using the web preset')
+    .example('$0 --path ./videos --recursive --output-dir ./processed', 'Recursively process all videos and save to output directory')
     
     // Input and output arguments
     .positional('input', {
@@ -63,6 +65,51 @@ export function configureCommandLine() {
     .positional('output', {
       describe: 'Output video file',
       type: 'string'
+    })
+    
+    // Batch processing options
+    .option('path', {
+      describe: 'Path to directory containing media files for batch processing',
+      type: 'string'
+    })
+    .option('recursive', {
+      describe: 'Recursively process files in subdirectories (for batch processing)',
+      type: 'boolean',
+      default: false
+    })
+    .option('output-dir', {
+      describe: 'Output directory for batch processed files',
+      type: 'string'
+    })
+    .option('output-prefix', {
+      describe: 'Prefix to add to output filenames (for batch processing)',
+      type: 'string',
+      default: ''
+    })
+    .option('output-suffix', {
+      describe: 'Suffix to add to output filenames (for batch processing)',
+      type: 'string',
+      default: ''
+    })
+    .option('output-extension', {
+      describe: 'Extension for output files (for batch processing)',
+      type: 'string'
+    })
+    .option('media-types', {
+      describe: 'Media types to process (for batch processing)',
+      type: 'array',
+      choices: ['video', 'audio', 'image'],
+      default: ['video', 'audio', 'image']
+    })
+    .option('concurrency', {
+      describe: 'Number of files to process concurrently (for batch processing)',
+      type: 'number',
+      default: 1
+    })
+    .option('fancy-ui', {
+      describe: 'Use fancy terminal UI for batch processing',
+      type: 'boolean',
+      default: true
     })
     
     // Transcoding options
@@ -364,6 +411,66 @@ export function prepareTranscodeOptions(argv) {
 }
 
 /**
+ * Prepare batch processing options from command-line arguments
+ * 
+ * @param {Object} argv - Command-line arguments
+ * @returns {Object} - Batch processing options
+ */
+export function prepareBatchOptions(argv) {
+  const options = {
+    transcodeOptions: prepareTranscodeOptions(argv)
+  };
+  
+  // Add output directory
+  if (argv.outputDir) {
+    options.outputDir = argv.outputDir;
+  }
+  
+  // Add output filename options
+  if (argv.outputPrefix) {
+    options.outputPrefix = argv.outputPrefix;
+  }
+  
+  if (argv.outputSuffix) {
+    options.outputSuffix = argv.outputSuffix;
+  }
+  
+  if (argv.outputExtension) {
+    options.outputExtension = argv.outputExtension.startsWith('.') ? 
+      argv.outputExtension : `.${argv.outputExtension}`;
+  }
+  
+  // Add concurrency
+  if (argv.concurrency) {
+    options.concurrency = argv.concurrency;
+  }
+  
+  return options;
+}
+
+/**
+ * Prepare scan options from command-line arguments
+ * 
+ * @param {Object} argv - Command-line arguments
+ * @returns {Object} - Scan options
+ */
+export function prepareScanOptions(argv) {
+  const options = {};
+  
+  // Add media types
+  if (argv.mediaTypes) {
+    options.mediaTypes = argv.mediaTypes;
+  }
+  
+  // Add recursive option
+  if (argv.recursive) {
+    options.recursive = argv.recursive;
+  }
+  
+  return options;
+}
+
+/**
  * Display transcoding results
  * 
  * @param {Object} result - Transcoding result
@@ -434,6 +541,30 @@ export function displayTranscodeResults(result) {
 }
 
 /**
+ * Display batch processing results
+ * 
+ * @param {Object} results - Batch processing results
+ */
+export function displayBatchResults(results) {
+  console.log(colors.green(`\nBatch processing completed successfully!`));
+  console.log(colors.green(`Processed ${results.total} files: ${results.successful.length} successful, ${results.failed.length} failed`));
+  
+  if (results.successful.length > 0) {
+    console.log(colors.green('\nSuccessfully processed files:'));
+    results.successful.forEach((item, index) => {
+      console.log(`${index + 1}. ${colors.yellow(path.basename(item.input))} → ${colors.yellow(path.basename(item.output))}`);
+    });
+  }
+  
+  if (results.failed.length > 0) {
+    console.log(colors.red('\nFailed files:'));
+    results.failed.forEach((item, index) => {
+      console.log(`${index + 1}. ${colors.yellow(path.basename(item.input))}: ${colors.red(item.error)}`);
+    });
+  }
+}
+
+/**
  * Create a progress bar for transcoding
  * 
  * @param {number} duration - Video duration in seconds
@@ -466,4 +597,20 @@ export function updateProgressBar(progressBar, progress, duration) {
     time: formatTime(currentTime),
     eta: formatTime(duration ? (duration - currentTime) / (progress.speed || 1) : 0)
   });
+}
+
+/**
+ * Create a batch progress bar
+ * 
+ * @param {number} total - Total number of files
+ * @returns {Object} - CLI progress bar
+ */
+export function createBatchProgressBar(total) {
+  return new cliProgress.MultiBar({
+    clearOnComplete: false,
+    hideCursor: true,
+    format: '{bar} | {percentage}% | {value}/{total} files | {file}',
+    barCompleteChar: '\u2588',
+    barIncompleteChar: '\u2591'
+  }, cliProgress.Presets.shades_classic);
 }
