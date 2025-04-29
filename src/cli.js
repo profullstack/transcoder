@@ -5,6 +5,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import cliProgress from 'cli-progress';
 import colors from 'ansi-colors';
 import yargs from 'yargs/yargs';
@@ -40,6 +41,20 @@ export function formatFileSize(bytes) {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+}
+
+/**
+ * Expand tilde in path to user's home directory
+ * 
+ * @param {string} filePath - Path that may contain a tilde
+ * @returns {string} - Path with tilde expanded
+ */
+export function expandTildePath(filePath) {
+  if (!filePath) return filePath;
+  if (filePath.startsWith('~/') || filePath === '~') {
+    return filePath.replace(/^~/, os.homedir());
+  }
+  return filePath;
 }
 
 /**
@@ -254,6 +269,22 @@ export function configureCommandLine() {
       describe: 'Show help',
       type: 'boolean'
     })
+    .middleware((argv) => {
+      // Expand tilde in paths
+      if (argv.path) {
+        argv.path = expandTildePath(argv.path);
+      }
+      if (argv.outputDir) {
+        argv.outputDir = expandTildePath(argv.outputDir);
+      }
+      if (argv._[0]) {
+        argv._[0] = expandTildePath(argv._[0]);
+      }
+      if (argv._[1]) {
+        argv._[1] = expandTildePath(argv._[1]);
+      }
+      return argv;
+    })
     .demandCommand(0)
     .help();
 }
@@ -457,9 +488,9 @@ export function prepareBatchOptions(argv) {
 export function prepareScanOptions(argv) {
   const options = {};
   
-  // Add media types
-  if (argv.mediaTypes) {
-    options.mediaTypes = argv.mediaTypes;
+  // Add media types - use the correct property name from argv
+  if (argv['media-types']) {
+    options.mediaTypes = argv['media-types'];
   }
   
   // Add recursive option

@@ -58,6 +58,7 @@ export {
 export {
   formatTime,
   formatFileSize,
+  expandTildePath,
   configureCommandLine,
   handleThumbnailsOnly,
   prepareTranscodeOptions,
