@@ -35,11 +35,14 @@
     "example:responsive": "node examples/responsive-profiles.js",
     "example:audio": "node examples/audio-transcoding.js",
     "example:image": "node examples/image-transcoding.js",
+    "example:square": "node examples/square-padding.js",
     "install-ffmpeg": "./bin/build-ffmpeg.sh",
+    "install-imagemagick": "./bin/install-imagemagick.sh",
     "cli": "./bin/transcoder.js"
   },
   "bin": {
     "install-ffmpeg": "./bin/build-ffmpeg.sh",
+    "install-imagemagick": "./bin/install-imagemagick.sh",
     "transcoder": "./bin/transcoder.js"
   },
   "keywords": [
@@ -70,6 +73,7 @@
   "dependencies": {
     "ansi-colors": "^4.1.3",
     "cli-progress": "^3.12.0",
+    "imagemagick": "^0.1.3",
     "yargs": "^17.7.2"
   },
   "devDependencies": {

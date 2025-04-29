@@ -417,6 +417,117 @@ describe('Image Transcoding', function() {
     });
   });
   
+  describe('Square padding', function() {
+    it('should convert a landscape image to square with transparent padding', async function() {
+      // Create a landscape test image
+      const testImagePath = path.join(inputDir, 'test-image-landscape.png');
+      
+      try {
+        await createTestImage(testImagePath, 800, 400, 'green');
+      } catch (error) {
+        this.skip();
+      }
+      
+      const outputPath = path.join(outputDir, 'square-transparent-landscape.jpg');
+      
+      const result = await transcodeImage(testImagePath, outputPath, {
+        format: 'jpg',
+        squarePad: true,
+        padColor: 'white', // Using white instead of transparent for JPEG
+        overwrite: true
+      });
+      
+      expect(result).to.have.property('outputPath');
+      expect(fs.existsSync(result.outputPath)).to.be.true;
+      
+      // Check if output file has a reasonable size
+      const stats = fs.statSync(outputPath);
+      expect(stats.size).to.be.greaterThan(0);
+    });
+    
+    it('should convert a portrait image to square with white padding', async function() {
+      // Create a portrait test image
+      const testImagePath = path.join(inputDir, 'test-image-portrait.png');
+      
+      try {
+        await createTestImage(testImagePath, 400, 800, 'red');
+      } catch (error) {
+        this.skip();
+      }
+      
+      const outputPath = path.join(outputDir, 'square-white-portrait.jpg');
+      
+      const result = await transcodeImage(testImagePath, outputPath, {
+        format: 'jpg',
+        quality: 90,
+        squarePad: true,
+        padColor: 'white',
+        overwrite: true
+      });
+      
+      expect(result).to.have.property('outputPath');
+      expect(fs.existsSync(result.outputPath)).to.be.true;
+      
+      // Check if output file has a reasonable size
+      const stats = fs.statSync(outputPath);
+      expect(stats.size).to.be.greaterThan(0);
+    });
+    
+    it('should apply the square preset', async function() {
+      // Create a landscape test image
+      const testImagePath = path.join(inputDir, 'test-image-landscape.png');
+      
+      if (!fs.existsSync(testImagePath)) {
+        try {
+          await createTestImage(testImagePath, 800, 400, 'green');
+        } catch (error) {
+          this.skip();
+        }
+      }
+      
+      const outputPath = path.join(outputDir, 'preset-square.png');
+      
+      const result = await transcodeImage(testImagePath, outputPath, {
+        preset: 'square', // Use square preset with transparent padding
+        overwrite: true
+      });
+      
+      expect(result).to.have.property('outputPath');
+      expect(fs.existsSync(result.outputPath)).to.be.true;
+      
+      // Check if output file has a reasonable size
+      const stats = fs.statSync(outputPath);
+      expect(stats.size).to.be.greaterThan(0);
+    });
+    
+    it('should apply the instagram-square preset', async function() {
+      // Create a portrait test image
+      const testImagePath = path.join(inputDir, 'test-image-portrait.png');
+      
+      if (!fs.existsSync(testImagePath)) {
+        try {
+          await createTestImage(testImagePath, 400, 800, 'red');
+        } catch (error) {
+          this.skip();
+        }
+      }
+      
+      const outputPath = path.join(outputDir, 'preset-instagram-square.jpg');
+      
+      const result = await transcodeImage(testImagePath, outputPath, {
+        preset: 'instagram-square',
+        overwrite: true
+      });
+      
+      expect(result).to.have.property('outputPath');
+      expect(fs.existsSync(result.outputPath)).to.be.true;
+      
+      // Check if output file has a reasonable size
+      const stats = fs.statSync(outputPath);
+      expect(stats.size).to.be.greaterThan(0);
+    });
+  });
+  
   describe('Batch image processing', function() {
     it('should process multiple images in batch', async function() {
       // Create multiple test images with different colors

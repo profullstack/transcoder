@@ -1282,6 +1282,9 @@ export const DEFAULT_IMAGE_OPTIONS = {
   rotate: null,          // No rotation by default
   flip: null,            // No flipping by default
   crop: null,            // No cropping by default
+  squarePad: false,      // No square padding by default
+  padColor: 'transparent', // Default padding color (transparent)
+  padSize: 0,            // Default padding size (auto-calculated)
   optimize: true,        // Optimize output by default
   stripMetadata: false,  // Keep metadata by default
   overwrite: false       // Don't overwrite existing files by default
@@ -1343,177 +1346,187 @@ export async function transcodeImage(inputPath, outputPath, options = {}) {
     }
   }
   
-  // Check if ffmpeg is installed
-  try {
-    await checkFfmpeg();
-  } catch (error) {
-    throw error;
-  }
-  
-  // Build ffmpeg arguments
-  const ffmpegArgs = [];
+  // Build ImageMagick convert command arguments
+  const convertArgs = [];
   
   // Add input file
-  ffmpegArgs.push('-i', inputPath);
+  convertArgs.push(inputPath);
   
-  // Prepare filter complex string for image operations
-  const filters = [];
+  // Apply transformations in the correct order
   
-  // Add resize filter if specified
-  if (settings.resize) {
+  // Resize if specified
+  if (settings.resize && !settings.squarePad) {
     const { width, height, fit } = settings.resize;
     
     if (width || height) {
-      let resizeFilter = 'scale=';
+      let resizeArg = '';
       
       if (width && height) {
         if (fit === 'inside') {
           // Scale to fit within width/height while maintaining aspect ratio
-          resizeFilter += `'min(${width},iw)':'min(${height},ih)':force_original_aspect_ratio=decrease`;
+          resizeArg = `${width}x${height}`;
         } else if (fit === 'outside') {
           // Scale to cover width/height while maintaining aspect ratio
-          resizeFilter += `'max(${width},iw)':'max(${height},ih)':force_original_aspect_ratio=increase`;
+          resizeArg = `${width}x${height}^`;
         } else if (fit === 'cover') {
           // Scale to cover width/height and crop to exact dimensions
-          resizeFilter += `'max(${width}*a/${height},1)*${width}':'max(${height}/(${width}/a),1)*${height}'`;
-          filters.push(resizeFilter);
-          filters.push(`crop=${width}:${height}`);
-          // Skip adding the resize filter again
-          resizeFilter = null;
+          resizeArg = `${width}x${height}^`;
+          convertArgs.push('-resize', resizeArg);
+          convertArgs.push('-gravity', 'center');
+          convertArgs.push('-extent', `${width}x${height}`);
+          resizeArg = null; // Skip adding resize again
         } else {
           // Default: exact dimensions
-          resizeFilter += `${width}:${height}`;
+          resizeArg = `${width}x${height}!`;
         }
       } else if (width) {
         // Width only, maintain aspect ratio
-        resizeFilter += `${width}:-1`;
+        resizeArg = `${width}x`;
       } else if (height) {
         // Height only, maintain aspect ratio
-        resizeFilter += `-1:${height}`;
+        resizeArg = `x${height}`;
       }
       
-      if (resizeFilter) {
-        filters.push(resizeFilter);
+      if (resizeArg) {
+        convertArgs.push('-resize', resizeArg);
       }
     }
   }
   
-  // Add rotation filter if specified
+  // Rotation if specified
   if (settings.rotate) {
-    const angle = settings.rotate;
-    if (angle === 90) {
-      filters.push('transpose=1'); // 90 degrees clockwise
-    } else if (angle === 180) {
-      filters.push('transpose=2,transpose=2'); // 180 degrees
-    } else if (angle === 270 || angle === -90) {
-      filters.push('transpose=2'); // 90 degrees counterclockwise
-    } else {
-      // Custom angle
-      filters.push(`rotate=${angle}*PI/180`);
-    }
+    convertArgs.push('-rotate', settings.rotate.toString());
   }
   
-  // Add flip filter if specified
+  // Flip if specified
   if (settings.flip) {
     if (settings.flip === 'horizontal') {
-      filters.push('hflip');
+      convertArgs.push('-flop');
     } else if (settings.flip === 'vertical') {
-      filters.push('vflip');
+      convertArgs.push('-flip');
     } else if (settings.flip === 'both') {
-      filters.push('hflip,vflip');
+      convertArgs.push('-flip', '-flop');
     }
   }
   
-  // Add crop filter if specified
+  // Crop if specified
   if (settings.crop && !settings.resize?.fit) {
     const { x, y, width, height } = settings.crop;
     if (width && height) {
-      filters.push(`crop=${width}:${height}:${x || 0}:${y || 0}`);
+      convertArgs.push('-crop', `${width}x${height}+${x || 0}+${y || 0}`);
     }
   }
   
-  // Apply filters if any
-  if (filters.length > 0) {
-    ffmpegArgs.push('-vf', filters.join(','));
+  // Handle square padding if specified
+  if (settings.squarePad) {
+    try {
+      // Get image dimensions using ImageMagick identify
+      const identifyProcess = spawn('identify', ['-format', '%w %h', inputPath]);
+      
+      let identifyOutput = '';
+      let identifyError = '';
+      
+      await new Promise((resolve, reject) => {
+        identifyProcess.stdout.on('data', (data) => {
+          identifyOutput += data.toString();
+        });
+        
+        identifyProcess.stderr.on('data', (data) => {
+          identifyError += data.toString();
+        });
+        
+        identifyProcess.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`Failed to get image dimensions: ${identifyError}`));
+          }
+        });
+        
+        identifyProcess.on('error', (err) => {
+          reject(new Error(`Failed to start identify process: ${err.message}`));
+        });
+      });
+      
+      // Parse dimensions
+      const [width, height] = identifyOutput.trim().split(' ').map(Number);
+      
+      if (width && height) {
+        // Determine target size (use specified width/height or the larger dimension)
+        let targetSize = Math.max(width, height);
+        if (settings.width && settings.height) {
+          // If both width and height are specified, use the larger one
+          targetSize = Math.max(settings.width, settings.height);
+        } else if (settings.width) {
+          targetSize = settings.width;
+        } else if (settings.height) {
+          targetSize = settings.height;
+        }
+        
+        // Add extra padding if specified
+        if (settings.padSize && settings.padSize > 0) {
+          targetSize += settings.padSize * 2;
+        }
+        
+        // Resize to fit within the target size while maintaining aspect ratio
+        if (width < height) {
+          // Image is taller than wide
+          convertArgs.push('-resize', `x${targetSize}`);
+        } else {
+          // Image is wider than tall
+          convertArgs.push('-resize', `${targetSize}x`);
+        }
+        
+        // Add padding to make it square
+        convertArgs.push('-background', settings.padColor || 'transparent');
+        convertArgs.push('-gravity', 'center');
+        convertArgs.push('-extent', `${targetSize}x${targetSize}`);
+      }
+    } catch (error) {
+      console.warn(`Warning: Failed to get image dimensions for square padding: ${error.message}`);
+      console.warn('Continuing with regular processing...');
+    }
   }
   
-  // Set output format and quality
-  if (settings.format) {
-    // Determine output format and codec
-    let outputFormat = settings.format.toLowerCase();
-    let codecArgs = [];
-    
-    switch (outputFormat) {
-      case 'jpg':
-      case 'jpeg':
-        outputFormat = 'mjpeg';
-        codecArgs = ['-q:v', Math.max(1, Math.min(31, Math.round(31 - (settings.quality / 100 * 30))))];
-        break;
-      case 'png':
-        outputFormat = 'png';
-        if (settings.compressionLevel) {
-          codecArgs = ['-compression_level', settings.compressionLevel.toString()];
-        }
-        break;
-      case 'webp':
-        outputFormat = 'webp';
-        codecArgs = ['-quality', settings.quality.toString()];
-        break;
-      case 'avif':
-        outputFormat = 'avif';
-        codecArgs = ['-quality', settings.quality.toString()];
-        if (settings.speed) {
-          codecArgs.push('-speed', settings.speed.toString());
-        }
-        break;
-      case 'gif':
-        outputFormat = 'gif';
-        break;
-      default:
-        // Default to JPEG
-        outputFormat = 'mjpeg';
-        codecArgs = ['-q:v', Math.max(1, Math.min(31, Math.round(31 - (settings.quality / 100 * 30))))];
-    }
-    
-    // Set output format
-    ffmpegArgs.push('-f', outputFormat);
-    
-    // Add codec-specific arguments
-    ffmpegArgs.push(...codecArgs);
+  // Quality settings
+  if (settings.format === 'jpg' || settings.format === 'jpeg') {
+    convertArgs.push('-quality', settings.quality.toString());
+  } else if (settings.format === 'png' && settings.compressionLevel) {
+    convertArgs.push('-quality', (100 - (settings.compressionLevel * 10)).toString());
+  } else if (settings.format === 'webp') {
+    convertArgs.push('-quality', settings.quality.toString());
+  }
+  
+  // Optimization
+  if (settings.optimize) {
+    convertArgs.push('-strip'); // Remove metadata for smaller file size
   }
   
   // Strip metadata if specified
   if (settings.stripMetadata) {
-    ffmpegArgs.push('-map_metadata', '-1');
-  }
-  
-  // Add overwrite flag if needed
-  if (settings.overwrite) {
-    ffmpegArgs.push('-y');
-  } else {
-    ffmpegArgs.push('-n');
+    convertArgs.push('-strip');
   }
   
   // Add output file
-  ffmpegArgs.push(outputPath);
+  convertArgs.push(outputPath);
   
-  // Store the complete FFmpeg command for logging
-  const ffmpegCommand = `ffmpeg ${ffmpegArgs.join(' ')}`;
+  // Store the complete ImageMagick command for logging
+  const convertCommand = `convert ${convertArgs.join(' ')}`;
   
   return new Promise((resolve, reject) => {
-    // Spawn ffmpeg process
-    const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
+    // Spawn ImageMagick convert process
+    const convertProcess = spawn('convert', convertArgs);
     
     let errorOutput = '';
     
-    // Handle stdout (progress information)
-    ffmpegProcess.stdout.on('data', (data) => {
+    // Handle stdout
+    convertProcess.stdout.on('data', (data) => {
       const dataStr = data.toString();
       emitter.emit('log', dataStr);
     });
     
-    // Handle stderr (log information)
-    ffmpegProcess.stderr.on('data', (data) => {
+    // Handle stderr
+    convertProcess.stderr.on('data', (data) => {
       const dataStr = data.toString();
       errorOutput += dataStr;
       
@@ -1522,33 +1535,74 @@ export async function transcodeImage(inputPath, outputPath, options = {}) {
     });
     
     // Handle process exit
-    ffmpegProcess.on('close', async (code) => {
+    convertProcess.on('close', async (code) => {
       if (code === 0) {
         // Check if output file was created
         if (!fs.existsSync(outputPath)) {
           return reject(new Error('Transcoding failed: Output file was not created'));
         }
         
-        // Get image metadata
+        // Get image metadata using ImageMagick identify
         try {
-          const metadata = await getImageMetadata(inputPath);
-          resolve({ outputPath, emitter, ffmpegCommand, metadata });
+          const identifyProcess = spawn('identify', ['-format', '%w %h %m', outputPath]);
+          
+          let identifyOutput = '';
+          let identifyError = '';
+          
+          await new Promise((resolveIdentify, rejectIdentify) => {
+            identifyProcess.stdout.on('data', (data) => {
+              identifyOutput += data.toString();
+            });
+            
+            identifyProcess.stderr.on('data', (data) => {
+              identifyError += data.toString();
+            });
+            
+            identifyProcess.on('close', (identifyCode) => {
+              if (identifyCode === 0) {
+                resolveIdentify();
+              } else {
+                rejectIdentify(new Error(`Failed to get image metadata: ${identifyError}`));
+              }
+            });
+            
+            identifyProcess.on('error', (err) => {
+              rejectIdentify(new Error(`Failed to start identify process: ${err.message}`));
+            });
+          });
+          
+          // Parse metadata
+          const [width, height, format] = identifyOutput.trim().split(' ');
+          
+          const metadata = {
+            format: {
+              filename: outputPath,
+              formatName: format
+            },
+            image: {
+              width: parseInt(width),
+              height: parseInt(height),
+              format: format
+            }
+          };
+          
+          resolve({ outputPath, emitter, convertCommand, metadata });
         } catch (metadataError) {
           console.warn(`Warning: Failed to extract metadata: ${metadataError.message}`);
-          resolve({ outputPath, emitter, ffmpegCommand });
+          resolve({ outputPath, emitter, convertCommand });
         }
       } else {
-        reject(new Error(`FFmpeg transcoding failed with code ${code}: ${errorOutput}`));
+        reject(new Error(`ImageMagick convert failed with code ${code}: ${errorOutput}`));
       }
     });
     
     // Handle process error
-    ffmpegProcess.on('error', (err) => {
-      reject(new Error(`Failed to start FFmpeg process: ${err.message}`));
+    convertProcess.on('error', (err) => {
+      reject(new Error(`Failed to start ImageMagick convert process: ${err.message}`));
     });
     
     // Emit start event
-    emitter.emit('start', { command: 'ffmpeg', args: ffmpegArgs });
+    emitter.emit('start', { command: 'convert', args: convertArgs });
   });
 }
 
@@ -1560,31 +1614,32 @@ export async function transcodeImage(inputPath, outputPath, options = {}) {
  */
 async function getImageMetadata(inputPath) {
   return new Promise((resolve, reject) => {
+    // Use ImageMagick identify to get image metadata
     const args = [
-      '-v', 'quiet',
-      '-print_format', 'json',
-      '-show_format',
-      '-show_streams',
+      '-format',
+      '%w %h %m %Q %[colorspace] %b',
       inputPath
     ];
     
-    const ffprobeProcess = spawn('ffprobe', args);
+    const identifyProcess = spawn('identify', args);
     
     let output = '';
     let errorOutput = '';
     
-    ffprobeProcess.stdout.on('data', (data) => {
+    identifyProcess.stdout.on('data', (data) => {
       output += data.toString();
     });
     
-    ffprobeProcess.stderr.on('data', (data) => {
+    identifyProcess.stderr.on('data', (data) => {
       errorOutput += data.toString();
     });
     
-    ffprobeProcess.on('close', (code) => {
+    identifyProcess.on('close', (code) => {
       if (code === 0) {
         try {
-          const metadata = JSON.parse(output);
+          // Parse the output
+          // Format: width height format quality colorspace filesize
+          const [width, height, format, quality, colorspace, filesize] = output.trim().split(' ');
           
           // Extract relevant metadata
           const result = {
@@ -1593,34 +1648,24 @@ async function getImageMetadata(inputPath) {
           };
           
           // Format metadata
-          if (metadata.format) {
-            result.format = {
-              filename: metadata.format.filename,
-              formatName: metadata.format.format_name,
-              size: parseInt(metadata.format.size) || 0
-            };
-          }
+          result.format = {
+            filename: inputPath,
+            formatName: format,
+            size: parseInt(filesize) || 0
+          };
           
-          // Image stream metadata
-          const imageStream = metadata.streams?.find(stream => stream.codec_type === 'video');
-          if (imageStream) {
-            result.image = {
-              codec: imageStream.codec_name,
-              width: imageStream.width,
-              height: imageStream.height,
-              pixelFormat: imageStream.pix_fmt,
-              colorSpace: imageStream.color_space
-            };
-            
-            // Calculate aspect ratio
-            if (imageStream.width && imageStream.height) {
-              result.image.aspectRatio = `${imageStream.width}:${imageStream.height}`;
-              
-              // Add display aspect ratio if available
-              if (imageStream.display_aspect_ratio) {
-                result.image.displayAspectRatio = imageStream.display_aspect_ratio;
-              }
-            }
+          // Image metadata
+          result.image = {
+            width: parseInt(width) || 0,
+            height: parseInt(height) || 0,
+            format: format,
+            quality: parseInt(quality) || 0,
+            colorSpace: colorspace
+          };
+          
+          // Calculate aspect ratio
+          if (result.image.width && result.image.height) {
+            result.image.aspectRatio = `${result.image.width}:${result.image.height}`;
           }
           
           resolve(result);
@@ -1628,12 +1673,12 @@ async function getImageMetadata(inputPath) {
           reject(new Error(`Failed to parse metadata: ${error.message}`));
         }
       } else {
-        reject(new Error(`FFprobe failed with code ${code}: ${errorOutput}`));
+        reject(new Error(`ImageMagick identify failed with code ${code}: ${errorOutput}`));
       }
     });
     
-    ffprobeProcess.on('error', (err) => {
-      reject(new Error(`Failed to start FFprobe process: ${err.message}`));
+    identifyProcess.on('error', (err) => {
+      reject(new Error(`Failed to start ImageMagick identify process: ${err.message}`));
     });
   });
 }

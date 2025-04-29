@@ -17,7 +17,7 @@ A lightweight Node.js module for transcoding videos to web-friendly MP4 format u
 
 - Transcodes any video format to web-friendly MP4 (H.264/AAC)
 - Transcodes audio files between formats (MP3, AAC, FLAC, OGG, etc.)
-- Converts and optimizes images with various transformations
+- Converts and optimizes images with various transformations (using ImageMagick)
 - Ensures compatibility across all modern browsers
 - Modern ESM (ECMAScript Modules) implementation
 - Async/await API with real-time progress reporting
@@ -30,7 +30,14 @@ A lightweight Node.js module for transcoding videos to web-friendly MP4 format u
 
 ## Prerequisites
 
-This module requires FFmpeg and ffprobe to be installed on your system. You can download them from [ffmpeg.org](https://ffmpeg.org/download.html) or build them from source.
+This module requires the following software to be installed on your system:
+
+1. **FFmpeg and ffprobe** - For video and audio processing
+   - Download from [ffmpeg.org](https://ffmpeg.org/download.html) or build from source
+   
+2. **ImageMagick** - For image processing
+   - Download from [imagemagick.org](https://imagemagick.org/script/download.php)
+   - Required for image transformations, especially for PNG with transparency
 
 ### Building FFmpeg from Source
 
@@ -61,6 +68,30 @@ The script supports:
 - **Ubuntu/Debian**
 - **Arch Linux**
 - **Windows** (via WSL - Windows Subsystem for Linux)
+
+### Installing ImageMagick
+
+The package includes a script to automatically install ImageMagick with all necessary dependencies:
+
+```bash
+# Using npm
+npm run install-imagemagick
+
+# Using yarn
+yarn install-imagemagick
+
+# Using pnpm
+pnpm install-imagemagick
+
+# Or directly
+./bin/install-imagemagick.sh
+```
+
+The script supports:
+- **macOS** (via Homebrew)
+- **Ubuntu/Debian**
+- **Arch Linux**
+- **Windows** (via Chocolatey)
 
 If you already have FFmpeg installed but need to rebuild it (for example, if thumbnail generation is not working), you can use the `--force` flag:
 
@@ -290,6 +321,9 @@ Available presets:
 | `avif-medium` | Medium quality AVIF | AVIF | 60% | Small file size |
 | `thumbnail` | Thumbnail size | JPEG | 80% | Thumbnails (300x300) |
 | `social-media` | Social media size | JPEG | 90% | Social sharing (1200x630) |
+| `square` | Square with padding | PNG | Lossless | Square images with transparent padding |
+| `square-white` | Square with white padding | JPEG | 90% | Square images with white background |
+| `instagram-square` | Instagram square | JPEG | 90% | Instagram (1080x1080) |
 
 You can also override any preset setting by providing your own options:
 
@@ -484,7 +518,10 @@ Transcodes an image file to another format with various transformations.
 - `outputPath` (string): Path where the transcoded image will be saved
 - `options` (object, optional): Transcoding options or preset name
   - Can include a `preset` property with one of the predefined image presets
-  - Can include transformation options like resize, rotate, crop, etc.
+  - Can include transformation options like resize, rotate, crop, squarePad, etc.
+  - `squarePad` (boolean): Convert rectangular image to square with padding
+  - `padColor` (string): Color for padding (e.g., 'transparent', 'white', 'black')
+  - `padSize` (number): Additional padding size in pixels
 
 **Returns:**
 
@@ -625,6 +662,9 @@ pnpm example:audio
 
 # Run the Image Transcoding example
 pnpm example:image
+
+# Run the Square Padding example
+pnpm example:square
 ```
 
 This will:

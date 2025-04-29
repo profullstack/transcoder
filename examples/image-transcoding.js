@@ -222,6 +222,14 @@ async function imageTransformationsExample() {
     // Create a test image
     const testImagePath = path.join(inputDir, 'test-image.png');
     
+    // Create a rectangular test image (landscape)
+    const landscapeImagePath = path.join(inputDir, 'test-image-landscape.png');
+    await createTestImage(landscapeImagePath, 800, 400, 'green');
+    
+    // Create a rectangular test image (portrait)
+    const portraitImagePath = path.join(inputDir, 'test-image-portrait.png');
+    await createTestImage(portraitImagePath, 400, 800, 'red');
+    
     // Resize example
     const resizeResult = await transcodeImage(
       testImagePath,
@@ -287,6 +295,90 @@ async function imageTransformationsExample() {
       }
     );
     console.log('Combined transformations:', combinedResult.outputPath);
+    
+    // Square padding examples
+    console.log('\nSquare padding examples:');
+    
+    // Square with transparent padding (landscape image)
+    const squareTransparentLandscape = await transcodeImage(
+      landscapeImagePath,
+      path.join(outputDir, 'square-transparent-landscape.png'),
+      {
+        format: 'png',
+        squarePad: true,
+        padColor: 'transparent',
+        overwrite: true
+      }
+    );
+    console.log('Square with transparent padding (landscape):', squareTransparentLandscape.outputPath);
+    
+    // Square with white padding (landscape image)
+    const squareWhiteLandscape = await transcodeImage(
+      landscapeImagePath,
+      path.join(outputDir, 'square-white-landscape.jpg'),
+      {
+        format: 'jpg',
+        quality: 90,
+        squarePad: true,
+        padColor: 'white',
+        overwrite: true
+      }
+    );
+    console.log('Square with white padding (landscape):', squareWhiteLandscape.outputPath);
+    
+    // Square with transparent padding (portrait image)
+    const squareTransparentPortrait = await transcodeImage(
+      portraitImagePath,
+      path.join(outputDir, 'square-transparent-portrait.png'),
+      {
+        format: 'png',
+        squarePad: true,
+        padColor: 'transparent',
+        overwrite: true
+      }
+    );
+    console.log('Square with transparent padding (portrait):', squareTransparentPortrait.outputPath);
+    
+    // Square with white padding (portrait image)
+    const squareWhitePortrait = await transcodeImage(
+      portraitImagePath,
+      path.join(outputDir, 'square-white-portrait.jpg'),
+      {
+        format: 'jpg',
+        quality: 90,
+        squarePad: true,
+        padColor: 'white',
+        overwrite: true
+      }
+    );
+    console.log('Square with white padding (portrait):', squareWhitePortrait.outputPath);
+    
+    // Square with custom size and padding
+    const squareCustom = await transcodeImage(
+      landscapeImagePath,
+      path.join(outputDir, 'square-custom.png'),
+      {
+        format: 'png',
+        width: 600,
+        height: 600,
+        squarePad: true,
+        padColor: 'black',
+        padSize: 20, // Add extra 20px padding
+        overwrite: true
+      }
+    );
+    console.log('Square with custom size and padding:', squareCustom.outputPath);
+    
+    // Using presets
+    const instagramSquare = await transcodeImage(
+      portraitImagePath,
+      path.join(outputDir, 'instagram-square.jpg'),
+      {
+        preset: 'instagram-square',
+        overwrite: true
+      }
+    );
+    console.log('Instagram square preset:', instagramSquare.outputPath);
     
     return true;
   } catch (error) {

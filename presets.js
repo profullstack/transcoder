@@ -571,6 +571,55 @@ export const SOCIAL_MEDIA_PRESET = {
 };
 
 /**
+ * Square Image Preset
+ * - Format: PNG (to support transparency)
+ * - Quality: High
+ * - Converts any image to square format with padding
+ * - Maintains original aspect ratio
+ * - Adds transparent padding where needed
+ */
+export const SQUARE_PRESET = {
+  format: 'png',
+  squarePad: true,
+  padColor: 'transparent',
+  optimize: true
+};
+
+/**
+ * Square Image with White Background Preset
+ * - Format: JPEG
+ * - Quality: 90
+ * - Converts any image to square format with padding
+ * - Maintains original aspect ratio
+ * - Adds white padding where needed
+ */
+export const SQUARE_WHITE_PRESET = {
+  format: 'jpg',
+  quality: 90,
+  squarePad: true,
+  padColor: 'white',
+  optimize: true
+};
+
+/**
+ * Instagram Square Preset
+ * - Format: JPEG
+ * - Quality: 90
+ * - Size: 1080x1080 (Instagram square format)
+ * - Maintains original aspect ratio with padding
+ * - Optimized for Instagram
+ */
+export const INSTAGRAM_SQUARE_PRESET = {
+  format: 'jpg',
+  quality: 90,
+  width: 1080,
+  height: 1080,
+  squarePad: true,
+  padColor: 'white',
+  optimize: true
+};
+
+/**
  * Map of preset names to preset configurations
  */
 export const PRESETS = {
@@ -607,7 +656,10 @@ export const PRESETS = {
   'avif-high': AVIF_HIGH_QUALITY_PRESET,
   'avif-medium': AVIF_MEDIUM_QUALITY_PRESET,
   'thumbnail': THUMBNAIL_PRESET,
-  'social-media': SOCIAL_MEDIA_PRESET
+  'social-media': SOCIAL_MEDIA_PRESET,
+  'square': SQUARE_PRESET,
+  'square-white': SQUARE_WHITE_PRESET,
+  'instagram-square': INSTAGRAM_SQUARE_PRESET
 };
 
 /**
