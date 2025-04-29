@@ -61,8 +61,12 @@ export {
   configureCommandLine,
   handleThumbnailsOnly,
   prepareTranscodeOptions,
+  prepareBatchOptions,
+  prepareScanOptions,
   displayTranscodeResults,
+  displayBatchResults,
   createTranscodeProgressBar,
+  createBatchProgressBar,
   updateProgressBar
 } from './cli.js';
 
