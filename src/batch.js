@@ -105,12 +105,13 @@ function getMediaType(filePath) {
 
 /**
  * Get the appropriate output extension based on media type and preset
- * 
+ *
  * @param {string} mediaType - Media type ('video', 'audio', 'image')
  * @param {Object} settings - Batch processing settings
+ * @param {string} filePath - Original file path (for fallback)
  * @returns {string} - Output file extension (e.g., '.mp4', '.mp3', '.jpg')
  */
-function getOutputExtension(mediaType, settings) {
+function getOutputExtension(mediaType, settings, filePath) {
   // If an output extension is explicitly specified, use it
   if (settings.outputExtension) {
     return settings.outputExtension;
@@ -122,6 +123,37 @@ function getOutputExtension(mediaType, settings) {
   // If a preset is specified and there's a default extension for it, use it
   if (presetName && DEFAULT_OUTPUT_EXTENSIONS[mediaType]?.presets?.[presetName]) {
     return DEFAULT_OUTPUT_EXTENSIONS[mediaType].presets[presetName];
+  }
+  
+  // For audio files, check if we're only applying enhancements
+  if (mediaType === 'audio') {
+    // Check if we're only applying audio enhancements without changing the codec
+    const isEnhancementOnly = settings.transcodeOptions?.audio &&
+      !settings.transcodeOptions?.audioCodec;
+    
+    // If we're only enhancing, preserve the original extension
+    if (isEnhancementOnly) {
+      return path.extname(filePath);
+    }
+    
+    // Otherwise, ensure the extension matches the codec
+    const audioCodec = settings.transcodeOptions?.audioCodec?.toLowerCase();
+    if (audioCodec) {
+      if (audioCodec === 'libmp3lame' || audioCodec.includes('mp3')) {
+        return '.mp3';
+      } else if (audioCodec === 'aac' || audioCodec.includes('aac')) {
+        return '.aac';
+      } else if (audioCodec === 'libvorbis' || audioCodec.includes('vorbis')) {
+        return '.ogg';
+      } else if (audioCodec === 'flac' || audioCodec.includes('flac')) {
+        return '.flac';
+      } else if (audioCodec.includes('pcm') || audioCodec.includes('wav')) {
+        return '.wav';
+      }
+    }
+    
+    // Default audio extension if codec doesn't match any known format
+    return '.mp3';
   }
   
   // Otherwise, use the default extension for the media type
@@ -213,7 +245,7 @@ async function processFile(filePath, settings, emitter, index) {
     }
     
     // Get the appropriate output extension
-    const outputExt = getOutputExtension(mediaType, settings);
+    const outputExt = getOutputExtension(mediaType, settings, filePath);
     
     // Generate output path
     const fileName = path.basename(filePath, path.extname(filePath));

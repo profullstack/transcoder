@@ -24,6 +24,7 @@ A lightweight Node.js module for transcoding videos to web-friendly MP4 format u
 - Event-based progress tracking
 - Customizable encoding options
 - Smart Presets for popular platforms (Instagram, YouTube, Twitter, etc.)
+- Audio enhancement features (normalization, noise reduction, fades)
 - Thumbnail Generation at specified intervals or timestamps
 - Batch processing of multiple files with a fancy terminal UI
 - No file storage - just passes through to FFmpeg
@@ -436,6 +437,98 @@ await transcode('input.mp4', 'output.mp4', {
     opacity: 0.8
   }
 });
+
+// Audio enhancement for videos
+await transcode('input.mp4', 'output.mp4', {
+  audio: {
+    normalize: true,        // Normalize audio levels
+    noiseReduction: 0.3,    // Reduce background noise (0.0 to 1.0)
+    fadeIn: 1.5,            // Fade in duration in seconds
+    fadeOut: 2.0,           // Fade out duration in seconds
+    volume: 1.2             // Adjust volume (1.0 = original volume)
+  }
+});
+```
+
+### Using Audio Enhancement
+
+The module includes powerful audio enhancement features to improve the quality of audio in your videos:
+
+```javascript
+import { transcode } from '@profullstack/transcoder';
+
+// Basic audio normalization
+await transcode('input.mp4', 'output.mp4', {
+  preset: 'web',
+  audio: {
+    normalize: true  // Normalize audio levels for consistent volume
+  }
+});
+
+// Noise reduction
+await transcode('input.mp4', 'output.mp4', {
+  preset: 'web',
+  audio: {
+    noiseReduction: 0.3  // Value between 0 and 1, higher values = more noise reduction
+  }
+});
+
+// Add fade in/out
+await transcode('input.mp4', 'output.mp4', {
+  preset: 'web',
+  audio: {
+    fadeIn: 1.5,  // Fade in duration in seconds
+    fadeOut: 2.0  // Fade out duration in seconds
+  }
+});
+
+// Adjust volume
+await transcode('input.mp4', 'output.mp4', {
+  preset: 'web',
+  audio: {
+    volume: 1.5  // Increase volume by 50%
+  }
+});
+
+// Combine multiple audio enhancements
+await transcode('input.mp4', 'output.mp4', {
+  preset: 'web',
+  audio: {
+    normalize: true,
+    noiseReduction: 0.2,
+    fadeIn: 0.5,
+    fadeOut: 1.0,
+    volume: 1.2
+  }
+});
+```
+
+**Important Note:** The audio enhancement features are primarily designed for enhancing audio tracks in video files. They work best when used with the `transcode` function for video files.
+
+For standalone audio files, the support varies by format:
+- WAV and AAC files are fully supported
+- MP3, FLAC, and OGG files may require specifying a codec with the `audioCodec` option
+
+When applying audio enhancements to video files, the audio track is processed while preserving the video quality.
+
+For the best results with standalone audio files, consider using a two-step approach:
+1. First, convert to a well-supported format like WAV
+2. Then apply audio enhancements
+
+```javascript
+// Example for enhancing standalone audio files
+import { transcodeAudio } from '@profullstack/transcoder';
+
+// First convert to WAV (if needed)
+await transcodeAudio('input.mp3', 'temp.wav', {
+  audioCodec: 'pcm_s16le'
+});
+
+// Then apply enhancements
+await transcodeAudio('temp.wav', 'enhanced.wav', {
+  normalize: true,
+  noiseReduction: 0.2
+});
 ```
 
 ### Using the CLI Tool
@@ -751,6 +844,7 @@ The following options can be customized:
 | preset | string | - | Platform preset name (e.g., 'instagram', 'youtube-hd', 'twitter') |
 | thumbnails | object | - | Thumbnail generation options (see below) |
 | watermark | object | - | Watermark options (see below) |
+| audio | object | - | Audio enhancement options (see below) |
 | videoCodec | string | 'libx264' | Video codec to use |
 | audioCodec | string | 'aac' | Audio codec to use |
 | videoBitrate | string | '1500k' | Video bitrate |
@@ -789,6 +883,16 @@ The following options can be customized:
 | fontColor | string | 'white' | Font color for text watermark |
 | fontFile | string | - | Path to font file for text watermark (if not specified, will try to find a system font) |
 | boxColor | string | - | Background box color for text watermark (e.g., "black@0.5" for semi-transparent black) |
+
+**Audio Enhancement Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| normalize | boolean | false | Whether to normalize audio levels for consistent volume |
+| noiseReduction | number | 0 | Noise reduction amount (0.0 to 1.0, higher values = more reduction) |
+| fadeIn | number | 0 | Fade in duration in seconds |
+| fadeOut | number | 0 | Fade out duration in seconds |
+| volume | number | 1.0 | Volume adjustment factor (1.0 = original volume) |
 
 **Note:** When using a platform preset, the `preset` option refers to the platform name (e.g., 'instagram'). The FFmpeg encoding preset (e.g., 'medium', 'slow') is still configurable but is included in each platform preset with appropriate values.
 

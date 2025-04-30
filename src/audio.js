@@ -63,8 +63,23 @@ export async function transcodeAudio(inputPath, outputPath, options = {}) {
   // Add input file
   ffmpegArgs.push('-i', inputPath);
   
-  // Add audio codec
-  ffmpegArgs.push('-c:a', settings.audioCodec);
+  // Check if we're only applying audio enhancements
+  const isEnhancementOnly = !settings.audioCodec && (
+    settings.normalize ||
+    settings.fadeIn > 0 ||
+    settings.fadeOut > 0 ||
+    settings.noiseReduction > 0 ||
+    settings.audio // Check for audio enhancement options from the new API
+  );
+  
+  // For audio enhancement only, we'll use a simpler approach that works for all formats
+  if (isEnhancementOnly) {
+    // Use the codec specified by the user, or default to AAC
+    ffmpegArgs.push('-c:a', settings.audioCodec || 'aac');
+  } else {
+    // For regular transcoding, use the specified codec
+    ffmpegArgs.push('-c:a', settings.audioCodec);
+  }
   
   // Add audio bitrate if specified
   if (settings.audioBitrate) {
@@ -139,6 +154,8 @@ export async function transcodeAudio(inputPath, outputPath, options = {}) {
   } else {
     ffmpegArgs.push('-n');
   }
+  
+  // No need to specify output format explicitly, FFmpeg will determine it from the output file extension
   
   // Add output file
   ffmpegArgs.push(outputPath);

@@ -257,6 +257,29 @@ export function configureCommandLine() {
       type: 'string'
     })
     
+    // Audio enhancement options
+    .option('audio-normalize', {
+      describe: 'Normalize audio levels for consistent volume',
+      type: 'boolean',
+      default: false
+    })
+    .option('audio-noise-reduction', {
+      describe: 'Reduce background noise (0.0 to 1.0, higher values = more reduction)',
+      type: 'number'
+    })
+    .option('audio-fade-in', {
+      describe: 'Fade in duration in seconds',
+      type: 'number'
+    })
+    .option('audio-fade-out', {
+      describe: 'Fade out duration in seconds',
+      type: 'number'
+    })
+    .option('audio-volume', {
+      describe: 'Volume adjustment factor (1.0 = original volume)',
+      type: 'number'
+    })
+    
     // Other options
     .option('verbose', {
       alias: 'v',
@@ -380,6 +403,59 @@ export function prepareTranscodeOptions(argv) {
   // Add audio options
   if (argv.audioCodec) options.audioCodec = argv.audioCodec;
   if (argv.audioBitrate) options.audioBitrate = argv.audioBitrate;
+  
+  // Add audio enhancement options
+  if (argv.audioNormalize || argv.audioNoiseReduction !== undefined ||
+      argv.audioFadeIn !== undefined || argv.audioFadeOut !== undefined ||
+      argv.audioVolume !== undefined) {
+    options.audio = {};
+    
+    if (argv.audioNormalize) {
+      options.audio.normalize = true;
+    }
+    
+    if (argv.audioNoiseReduction !== undefined) {
+      options.audio.noiseReduction = Math.min(1, Math.max(0, argv.audioNoiseReduction));
+    }
+    
+    if (argv.audioFadeIn !== undefined) {
+      options.audio.fadeIn = argv.audioFadeIn;
+    }
+    
+    if (argv.audioFadeOut !== undefined) {
+      options.audio.fadeOut = argv.audioFadeOut;
+    }
+    
+    if (argv.audioVolume !== undefined) {
+      options.audio.volume = argv.audioVolume;
+    }
+  }
+  
+  // Add audio enhancement options
+  if (argv.audioNormalize || argv.audioNoiseReduction ||
+      argv.audioFadeIn || argv.audioFadeOut || argv.audioVolume) {
+    options.audio = {};
+    
+    if (argv.audioNormalize) {
+      options.audio.normalize = true;
+    }
+    
+    if (argv.audioNoiseReduction !== undefined) {
+      options.audio.noiseReduction = Math.min(1, Math.max(0, argv.audioNoiseReduction));
+    }
+    
+    if (argv.audioFadeIn !== undefined) {
+      options.audio.fadeIn = argv.audioFadeIn;
+    }
+    
+    if (argv.audioFadeOut !== undefined) {
+      options.audio.fadeOut = argv.audioFadeOut;
+    }
+    
+    if (argv.audioVolume !== undefined) {
+      options.audio.volume = argv.audioVolume;
+    }
+  }
   
   // Add thumbnail options
   if (argv.thumbnails) {
@@ -523,6 +599,15 @@ export function displayTranscodeResults(result) {
       console.log(colors.yellow(filter));
     } else {
       console.log('\nCommand does not include video filters');
+    }
+    
+    // Check if the command includes audio filters
+    if (result.ffmpegCommand.includes('-af')) {
+      console.log('\nCommand includes audio filters:');
+      const afIndex = result.ffmpegCommand.indexOf('-af');
+      const nextArgIndex = result.ffmpegCommand.indexOf(' ', afIndex + 4);
+      const filter = result.ffmpegCommand.substring(afIndex + 4, nextArgIndex);
+      console.log(colors.yellow(filter));
     }
   }
   

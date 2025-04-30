@@ -4,7 +4,7 @@ This document outlines potential features to enhance the @profullstack/transcode
 
 ## High-Impact, Easy-to-Implement Features
 
-### 5. 🔊 Audio Enhancement (Not Implemented)
+### 5. ✅ Audio Enhancement (Implemented)
 
 **What**: Normalize audio levels, reduce noise, and enhance clarity.
 
@@ -13,7 +13,13 @@ This document outlines potential features to enhance the @profullstack/transcode
 ```javascript
 // Example API
 await transcode('input.mp4', 'output.mp4', {
-  audio: { normalize: true, noiseReduction: 0.3 }
+  audio: {
+    normalize: true,        // Normalize audio levels
+    noiseReduction: 0.3,    // Reduce background noise (0.0 to 1.0)
+    fadeIn: 1.5,            // Fade in duration in seconds
+    fadeOut: 2.0,           // Fade out duration in seconds
+    volume: 1.2             // Adjust volume (1.0 = original volume)
+  }
 });
 ```
 

@@ -116,6 +116,78 @@ export async function transcode(inputPath, outputPath, options = {}) {
   // Prepare video filters
   let videoFilters = [];
   
+  // Prepare audio filters
+  let audioFilters = [];
+  
+  // Handle audio enhancement options
+  if (settings.audio) {
+    // Audio normalization
+    if (settings.audio.normalize) {
+      audioFilters.push('loudnorm=I=-16:TP=-1.5:LRA=11');
+      if (verbose) {
+        console.log('Adding audio normalization filter');
+      }
+    }
+    
+    // Noise reduction
+    if (settings.audio.noiseReduction > 0) {
+      // Ensure the value is between 0 and 1
+      const nrValue = Math.min(1, Math.max(0, settings.audio.noiseReduction));
+      // Convert to a value between 0.01 and 0.97 for the FFmpeg filter
+      const nrAmount = 0.01 + (nrValue * 0.96);
+      // Use a valid noise floor value (in dB, between -80 and -20)
+      const noiseFloor = -60; // A reasonable default value
+      audioFilters.push(`afftdn=nr=${nrAmount}:nf=${noiseFloor}`);
+      if (verbose) {
+        console.log(`Adding noise reduction filter: ${nrAmount}`);
+      }
+    }
+    
+    // Fade in
+    if (settings.audio.fadeIn > 0) {
+      audioFilters.push(`afade=t=in:st=0:d=${settings.audio.fadeIn}`);
+      if (verbose) {
+        console.log(`Adding fade in filter: ${settings.audio.fadeIn}s`);
+      }
+    }
+    
+    // Fade out
+    if (settings.audio.fadeOut > 0) {
+      // Get audio duration to calculate fade out start time
+      try {
+        if (duration > 0) {
+          const fadeOutStart = Math.max(0, duration - settings.audio.fadeOut);
+          audioFilters.push(`afade=t=out:st=${fadeOutStart}:d=${settings.audio.fadeOut}`);
+          if (verbose) {
+            console.log(`Adding fade out filter: ${settings.audio.fadeOut}s starting at ${fadeOutStart}s`);
+          }
+        } else {
+          // If we can't get the duration, add a fade out without a specific start time
+          audioFilters.push(`afade=t=out:d=${settings.audio.fadeOut}`);
+          if (verbose) {
+            console.log(`Adding fade out filter without start time: ${settings.audio.fadeOut}s`);
+          }
+        }
+      } catch (error) {
+        if (verbose) {
+          console.warn(`Warning: Could not determine audio duration for fade out: ${error.message}`);
+        }
+        // If we can't get the duration, add a fade out without a specific start time
+        audioFilters.push(`afade=t=out:d=${settings.audio.fadeOut}`);
+      }
+    }
+    
+    // Volume adjustment
+    if (settings.audio.volume && settings.audio.volume !== 1.0) {
+      // Ensure the value is reasonable (0.1 to 10.0)
+      const volValue = Math.min(10, Math.max(0.1, settings.audio.volume));
+      audioFilters.push(`volume=${volValue}`);
+      if (verbose) {
+        console.log(`Adding volume adjustment filter: ${volValue}`);
+      }
+    }
+  }
+  
   // Add scaling filter if specified
   if (settings.width > 0 && settings.height > 0) {
     videoFilters.push(`scale=${settings.width}:${settings.height}`);
@@ -385,6 +457,16 @@ export async function transcode(inputPath, outputPath, options = {}) {
     }
   } else if (videoFilters.length === 0 && !settings.usingComplexFilter && verbose) {
     console.log('No video filters applied');
+  }
+  
+  // Apply audio filters if any
+  if (audioFilters.length > 0) {
+    ffmpegArgs.push('-af', audioFilters.join(','));
+    
+    // Log the filter being used for debugging
+    if (verbose) {
+      console.log(`Using audio filter: ${audioFilters.join(',')}`);
+    }
   }
   
   // Add fps if specified

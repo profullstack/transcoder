@@ -40,6 +40,7 @@
     "example:image": "node examples/image-transcoding.js",
     "example:square": "node examples/square-padding.js",
     "example:batch": "node examples/batch-processing.js",
+    "example:audio-enhancement": "node examples/audio-enhancement.js",
     "example:cli": "./examples/example.sh",
     "install-ffmpeg": "./bin/build-ffmpeg.sh",
     "install-imagemagick": "./bin/install-imagemagick.sh",
