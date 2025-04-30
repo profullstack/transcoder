@@ -287,6 +287,10 @@ export function configureCommandLine() {
       type: 'boolean',
       default: false
     })
+    .option('ffmpeg-args', {
+      describe: 'Pass custom arguments directly to ffmpeg (e.g., "--ffmpeg-args=\'-vf eq=brightness=0.1\'")',
+      type: 'string'
+    })
     .option('help', {
       alias: '?',
       describe: 'Show help',
@@ -403,6 +407,11 @@ export function prepareTranscodeOptions(argv) {
   // Add audio options
   if (argv.audioCodec) options.audioCodec = argv.audioCodec;
   if (argv.audioBitrate) options.audioBitrate = argv.audioBitrate;
+  
+  // Add custom ffmpeg arguments if specified
+  if (argv.ffmpegArgs) {
+    options.ffmpegArgs = argv.ffmpegArgs;
+  }
   
   // Add audio enhancement options
   if (argv.audioNormalize || argv.audioNoiseReduction !== undefined ||

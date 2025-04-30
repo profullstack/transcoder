@@ -177,6 +177,23 @@ export async function transcodeAudio(inputPath, outputPath, options = {}) {
   
   // No need to specify output format explicitly, FFmpeg will determine it from the output file extension
   
+  // Add custom ffmpeg arguments if specified
+  if (settings.ffmpegArgs) {
+    // Split the custom arguments string into an array of arguments
+    // This handles arguments with spaces correctly by respecting quotes
+    const customArgs = settings.ffmpegArgs.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+    
+    // Remove any quotes from the arguments
+    const processedArgs = customArgs.map(arg => arg.replace(/^['"]|['"]$/g, ''));
+    
+    if (settings.verbose) {
+      console.log(`Adding custom ffmpeg arguments: ${processedArgs.join(' ')}`);
+    }
+    
+    // Add the custom arguments to the ffmpeg command
+    ffmpegArgs.push(...processedArgs);
+  }
+  
   // Add output file
   ffmpegArgs.push(outputPath);
   

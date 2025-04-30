@@ -589,6 +589,9 @@ transcoder input.mp4 output.mp4 --width 1280 --height 720 --bitrate 2M
 # Trim a video
 transcoder input.mp4 output.mp4 --trim --start 00:00:10 --end 00:00:30
 
+# Pass custom ffmpeg arguments directly
+transcoder input.mp4 output.mp4 --ffmpeg-args="-vf eq=brightness=0.1:saturation=1.5"
+
 # Batch process all videos in a directory
 transcoder --path ./videos --preset web --output-dir ./processed
 
@@ -654,6 +657,7 @@ For batch processing, the CLI tool provides a fancy terminal UI:
 | `--media-types` | Media types to process (for batch processing) |
 | `--concurrency` | Number of files to process concurrently (for batch processing) |
 | `--fancy-ui` | Use fancy terminal UI for batch processing |
+| `--ffmpeg-args` | Pass custom arguments directly to ffmpeg (e.g., "--ffmpeg-args='-vf eq=brightness=0.1'") |
 | `--verbose`, `-v` | Show detailed progress information |
 | `--help`, `-?` | Show help |
 
