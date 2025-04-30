@@ -69,8 +69,28 @@ export async function transcodeAudio(inputPath, outputPath, options = {}) {
     settings.fadeIn > 0 ||
     settings.fadeOut > 0 ||
     settings.noiseReduction > 0 ||
-    settings.audio // Check for audio enhancement options from the new API
+    (settings.audio && Object.keys(settings.audio).length > 0) // Check for audio enhancement options from the new API
   );
+  
+  // For unsupported formats, skip audio enhancement
+  if (isEnhancementOnly) {
+    // Get the file extension
+    const ext = path.extname(inputPath).toLowerCase();
+    
+    // Check if the format is supported for audio enhancement
+    // WAV and AAC are fully supported
+    if (ext === '.wav' || ext === '.aac') {
+      // These formats are fully supported, continue processing
+    }
+    // MP3, FLAC, and OGG may have issues with audio enhancement
+    else if (ext === '.mp3' || ext === '.flac' || ext === '.ogg') {
+      // Create a custom error object with a special property
+      const error = new Error(`Audio enhancement for ${ext} files may not work correctly. Use a codec parameter or convert to WAV first.`);
+      error.message = `Audio enhancement for ${ext} files may not work correctly. Use a codec parameter or convert to WAV first.`;
+      error.isFormatWarning = true;
+      throw error;
+    }
+  }
   
   // For audio enhancement only, we'll use a simpler approach that works for all formats
   if (isEnhancementOnly) {

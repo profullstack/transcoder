@@ -429,31 +429,14 @@ export function prepareTranscodeOptions(argv) {
     if (argv.audioVolume !== undefined) {
       options.audio.volume = argv.audioVolume;
     }
-  }
-  
-  // Add audio enhancement options
-  if (argv.audioNormalize || argv.audioNoiseReduction ||
-      argv.audioFadeIn || argv.audioFadeOut || argv.audioVolume) {
-    options.audio = {};
     
-    if (argv.audioNormalize) {
-      options.audio.normalize = true;
-    }
-    
-    if (argv.audioNoiseReduction !== undefined) {
-      options.audio.noiseReduction = Math.min(1, Math.max(0, argv.audioNoiseReduction));
-    }
-    
-    if (argv.audioFadeIn !== undefined) {
-      options.audio.fadeIn = argv.audioFadeIn;
-    }
-    
-    if (argv.audioFadeOut !== undefined) {
-      options.audio.fadeOut = argv.audioFadeOut;
-    }
-    
-    if (argv.audioVolume !== undefined) {
-      options.audio.volume = argv.audioVolume;
+    // For audio-only files, don't set a specific codec if none is provided
+    // This will allow the original format to be preserved
+    if (!argv.audioCodec && argv['media-types'] &&
+        argv['media-types'].length === 1 &&
+        argv['media-types'][0] === 'audio') {
+      // Remove any codec that might have been set by a preset
+      delete options.audioCodec;
     }
   }
   
@@ -658,12 +641,17 @@ export function displayTranscodeResults(result) {
 
 /**
  * Display batch processing results
- * 
+ *
  * @param {Object} results - Batch processing results
  */
 export function displayBatchResults(results) {
   console.log(colors.green(`\nBatch processing completed successfully!`));
-  console.log(colors.green(`Processed ${results.total} files: ${results.successful.length} successful, ${results.failed.length} failed`));
+  
+  // Count skipped files
+  const skippedFiles = results.failed.filter(item => item.skipped);
+  const failedFiles = results.failed.filter(item => !item.skipped);
+  
+  console.log(colors.green(`Processed ${results.total} files: ${results.successful.length} successful, ${failedFiles.length} failed, ${skippedFiles.length} skipped`));
   
   if (results.successful.length > 0) {
     console.log(colors.green('\nSuccessfully processed files:'));
@@ -672,9 +660,16 @@ export function displayBatchResults(results) {
     });
   }
   
-  if (results.failed.length > 0) {
+  if (skippedFiles.length > 0) {
+    console.log(colors.yellow('\nSkipped files (format not fully supported for enhancement):'));
+    skippedFiles.forEach((item, index) => {
+      console.log(`${index + 1}. ${colors.yellow(path.basename(item.input))}: ${colors.yellow(item.warning)}`);
+    });
+  }
+  
+  if (failedFiles.length > 0) {
     console.log(colors.red('\nFailed files:'));
-    results.failed.forEach((item, index) => {
+    failedFiles.forEach((item, index) => {
       console.log(`${index + 1}. ${colors.yellow(path.basename(item.input))}: ${colors.red(item.error)}`);
     });
   }

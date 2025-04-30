@@ -293,6 +293,45 @@ async function processFile(filePath, settings, emitter, index) {
       
       result = await transcode(filePath, outputPath, transcodeOptionsWithProgress);
     } else if (mediaType === 'audio') {
+      // Check if we're applying audio enhancements
+      const hasAudioEnhancements =
+        transcodeOptionsWithProgress.audio &&
+        (transcodeOptionsWithProgress.audio.normalize ||
+         transcodeOptionsWithProgress.audio.noiseReduction !== undefined ||
+         transcodeOptionsWithProgress.audio.fadeIn !== undefined ||
+         transcodeOptionsWithProgress.audio.fadeOut !== undefined ||
+         transcodeOptionsWithProgress.audio.volume !== undefined);
+      
+      // Check file extension for compatibility with audio enhancements
+      const ext = path.extname(filePath).toLowerCase();
+      
+      // If we're applying enhancements to a format that may not be compatible, skip it
+      if (hasAudioEnhancements && !transcodeOptionsWithProgress.audioCodec &&
+          (ext === '.mp3' || ext === '.flac' || ext === '.ogg')) {
+        
+        const warningMessage = `Audio enhancement for ${ext} files may not work correctly. Use a codec parameter or convert to WAV first.`;
+        
+        // Log the warning
+        console.warn(`Warning: ${warningMessage}`);
+        
+        // Emit a warning event
+        emitter.emit('fileWarning', {
+          filePath,
+          warning: warningMessage
+        });
+        
+        // Mark as 100% complete
+        emitter.emit('fileProgress', { filePath, outputPath, mediaType, percent: 100 });
+        
+        // Return as skipped
+        return {
+          input: filePath,
+          skipped: true,
+          warning: warningMessage,
+          success: false
+        };
+      }
+      
       // For audio, we don't have real-time progress, so emit a few progress updates
       emitter.emit('fileProgress', { filePath, outputPath, mediaType, percent: 25 });
       result = await transcodeAudio(filePath, outputPath, transcodeOptionsWithProgress);
@@ -329,12 +368,39 @@ async function processFile(filePath, settings, emitter, index) {
       console.error('Error processing file:', error);
     }
     
-    // Emit file error event
-    emitter.emit('fileError', { 
-      filePath, 
+    // Check if this is a format compatibility warning for audio enhancement
+    if (error.isFormatWarning) {
+      // This is a warning about format compatibility, not a fatal error
+      const warningMessage = error.message;
+      
+      // Log the warning
+      console.warn(`Warning: ${warningMessage}`);
+      
+      // Emit a warning event
+      emitter.emit('fileWarning', {
+        filePath,
+        warning: warningMessage
+      });
+      
+      // Mark as 100% complete
+      emitter.emit('fileProgress', { filePath, outputPath, mediaType, percent: 100 });
+      
+      // Return as skipped
+      return {
+        input: filePath,
+        skipped: true,
+        warning: warningMessage,
+        success: false
+      };
+    }
+    
+    // For other errors, emit error event
+    emitter.emit('fileError', {
+      filePath,
       error: error.message
     });
     
+    // Return as failed
     return {
       input: filePath,
       error: error.message,

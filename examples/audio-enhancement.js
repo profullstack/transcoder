@@ -1,165 +1,167 @@
 /**
  * @profullstack/transcoder - Audio Enhancement Example
  * 
- * This example demonstrates how to use audio enhancement features
- * to improve the quality of audio in video files.
+ * This example demonstrates how to use the audio enhancement features
+ * of the transcoder library, including:
+ * - Audio normalization
+ * - Noise reduction
+ * - Fade in/out
+ * - Volume adjustment
  */
 
-import { transcode } from '../src/index.js';
+import { transcodeAudio } from '../src/audio.js';
+import { batchProcessDirectory } from '../src/batch.js';
 import path from 'path';
 
-// Input and output paths
-const inputPath = './test-videos/input/test-video.mov';
-const outputDir = './test-videos/output';
-
-// Ensure output directory exists
-import fs from 'fs';
-if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir, { recursive: true });
-}
-
-// Example 1: Basic audio normalization
-async function normalizeAudio() {
-  console.log('\n--- Example 1: Basic Audio Normalization ---');
-  const outputPath = path.join(outputDir, 'normalized-audio.mp4');
+// Example 1: Basic audio enhancement
+async function enhanceAudioFile() {
+  const inputPath = './test-videos/input/test-audio.wav';
+  const outputPath = './test-videos/output/enhanced-audio.wav';
   
-  console.log(`Transcoding ${inputPath} to ${outputPath} with audio normalization...`);
+  console.log('Enhancing audio file...');
   
   try {
-    const result = await transcode(inputPath, outputPath, {
-      preset: 'web',
-      audio: {
-        normalize: true
-      },
+    const result = await transcodeAudio(inputPath, outputPath, {
+      // Audio enhancement options
+      normalize: true,              // Normalize audio levels
+      noiseReduction: 0.3,          // Apply noise reduction (0-1 scale)
+      fadeIn: 0.5,                  // Add 0.5 second fade in
+      fadeOut: 0.5,                 // Add 0.5 second fade out
+      volume: 1.2,                  // Increase volume by 20%
+      
+      // Always overwrite existing files
       overwrite: true
     });
     
-    console.log('Transcoding completed successfully!');
-    console.log(`Output file: ${result.outputPath}`);
+    console.log(`Audio enhancement completed: ${result.outputPath}`);
     console.log('FFmpeg command used:');
     console.log(result.ffmpegCommand);
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error('Error enhancing audio:', error.message);
   }
 }
 
-// Example 2: Noise reduction
-async function reduceNoise() {
-  console.log('\n--- Example 2: Noise Reduction ---');
-  const outputPath = path.join(outputDir, 'noise-reduced.mp4');
+// Example 2: Batch process audio files with enhancement
+async function batchEnhanceAudioFiles() {
+  const inputDir = './test-videos/input';
+  const outputDir = './test-videos/output/batch-enhanced';
   
-  console.log(`Transcoding ${inputPath} to ${outputPath} with noise reduction...`);
+  console.log('Batch enhancing audio files...');
   
   try {
-    const result = await transcode(inputPath, outputPath, {
-      preset: 'web',
-      audio: {
-        noiseReduction: 0.3 // Value between 0 and 1, higher values = more noise reduction
+    const result = await batchProcessDirectory(inputDir, {
+      // Output directory
+      outputDir,
+      
+      // Output filename options
+      outputPrefix: 'enhanced-',
+      outputSuffix: '',
+      
+      // Transcoding options
+      transcodeOptions: {
+        // Audio enhancement options
+        audio: {
+          normalize: true,
+          noiseReduction: 0.2,
+          fadeIn: 0.3,
+          fadeOut: 0.3,
+          volume: 1.1
+        },
+        
+        // Always overwrite existing files
+        overwrite: true
       },
+      
+      // Process 2 files concurrently
+      concurrency: 2,
+      
+      // Show verbose output
+      verbose: true
+    }, {
+      // Only process audio files
+      mediaTypes: ['audio'],
+      
+      // Process files recursively
+      recursive: true
+    });
+    
+    console.log(`Batch processing completed: ${result.results.successful.length} successful, ${result.results.failed.length} failed`);
+    
+    // Print successful files
+    if (result.results.successful.length > 0) {
+      console.log('\nSuccessfully processed files:');
+      result.results.successful.forEach(file => {
+        console.log(`- ${path.basename(file.input)} → ${path.basename(file.output)}`);
+      });
+    }
+    
+    // Print skipped files
+    const skippedFiles = result.results.failed.filter(file => file.skipped);
+    if (skippedFiles.length > 0) {
+      console.log('\nSkipped files:');
+      skippedFiles.forEach(file => {
+        console.log(`- ${path.basename(file.input)}: ${file.warning}`);
+      });
+    }
+    
+    // Print failed files
+    const failedFiles = result.results.failed.filter(file => !file.skipped);
+    if (failedFiles.length > 0) {
+      console.log('\nFailed files:');
+      failedFiles.forEach(file => {
+        console.log(`- ${path.basename(file.input)}: ${file.error}`);
+      });
+    }
+  } catch (error) {
+    console.error('Error batch enhancing audio:', error.message);
+  }
+}
+
+// Example 3: Audio enhancement with codec conversion
+async function enhanceAndConvertAudio() {
+  const inputPath = './test-videos/input/test-audio.mp3';
+  const outputPath = './test-videos/output/enhanced-converted.aac';
+  
+  console.log('Enhancing and converting audio file...');
+  
+  try {
+    const result = await transcodeAudio(inputPath, outputPath, {
+      // Audio enhancement options
+      normalize: true,
+      noiseReduction: 0.3,
+      fadeIn: 0.5,
+      fadeOut: 0.5,
+      
+      // Transcoding options
+      audioCodec: 'aac',           // Convert to AAC codec
+      audioBitrate: '128k',        // Set bitrate to 128k
+      audioSampleRate: 44100,      // Set sample rate to 44.1kHz
+      audioChannels: 2,            // Convert to stereo
+      
+      // Always overwrite existing files
       overwrite: true
     });
     
-    console.log('Transcoding completed successfully!');
-    console.log(`Output file: ${result.outputPath}`);
+    console.log(`Audio enhancement and conversion completed: ${result.outputPath}`);
     console.log('FFmpeg command used:');
     console.log(result.ffmpegCommand);
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error('Error enhancing and converting audio:', error.message);
   }
 }
 
-// Example 3: Fade in/out
-async function addFades() {
-  console.log('\n--- Example 3: Audio Fade In/Out ---');
-  const outputPath = path.join(outputDir, 'audio-fades.mp4');
-  
-  console.log(`Transcoding ${inputPath} to ${outputPath} with audio fades...`);
-  
-  try {
-    const result = await transcode(inputPath, outputPath, {
-      preset: 'web',
-      audio: {
-        fadeIn: 1.5,  // Fade in duration in seconds
-        fadeOut: 2.0  // Fade out duration in seconds
-      },
-      overwrite: true
-    });
-    
-    console.log('Transcoding completed successfully!');
-    console.log(`Output file: ${result.outputPath}`);
-    console.log('FFmpeg command used:');
-    console.log(result.ffmpegCommand);
-  } catch (error) {
-    console.error('Error:', error.message);
-  }
-}
-
-// Example 4: Volume adjustment
-async function adjustVolume() {
-  console.log('\n--- Example 4: Volume Adjustment ---');
-  const outputPath = path.join(outputDir, 'volume-adjusted.mp4');
-  
-  console.log(`Transcoding ${inputPath} to ${outputPath} with volume adjustment...`);
-  
-  try {
-    const result = await transcode(inputPath, outputPath, {
-      preset: 'web',
-      audio: {
-        volume: 1.5  // Increase volume by 50%
-      },
-      overwrite: true
-    });
-    
-    console.log('Transcoding completed successfully!');
-    console.log(`Output file: ${result.outputPath}`);
-    console.log('FFmpeg command used:');
-    console.log(result.ffmpegCommand);
-  } catch (error) {
-    console.error('Error:', error.message);
-  }
-}
-
-// Example 5: Combining multiple audio enhancements
-async function combineEnhancements() {
-  console.log('\n--- Example 5: Combined Audio Enhancements ---');
-  const outputPath = path.join(outputDir, 'enhanced-audio.mp4');
-  
-  console.log(`Transcoding ${inputPath} to ${outputPath} with multiple audio enhancements...`);
-  
-  try {
-    const result = await transcode(inputPath, outputPath, {
-      preset: 'web',
-      audio: {
-        normalize: true,
-        noiseReduction: 0.2,
-        fadeIn: 0.5,
-        fadeOut: 1.0,
-        volume: 1.2
-      },
-      overwrite: true
-    });
-    
-    console.log('Transcoding completed successfully!');
-    console.log(`Output file: ${result.outputPath}`);
-    console.log('FFmpeg command used:');
-    console.log(result.ffmpegCommand);
-  } catch (error) {
-    console.error('Error:', error.message);
-  }
-}
-
-// Run all examples
+// Run the examples
 async function runExamples() {
-  await normalizeAudio();
-  await reduceNoise();
-  await addFades();
-  await adjustVolume();
-  await combineEnhancements();
+  console.log('=== Example 1: Basic Audio Enhancement ===');
+  await enhanceAudioFile();
   
-  console.log('\nAll examples completed!');
-  console.log('Output files are in the directory:', outputDir);
+  console.log('\n=== Example 2: Batch Audio Enhancement ===');
+  await batchEnhanceAudioFiles();
+  
+  console.log('\n=== Example 3: Audio Enhancement with Codec Conversion ===');
+  await enhanceAndConvertAudio();
 }
 
-runExamples().catch(err => {
-  console.error('Error running examples:', err);
+runExamples().catch(error => {
+  console.error('Error running examples:', error);
 });

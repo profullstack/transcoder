@@ -506,8 +506,13 @@ await transcode('input.mp4', 'output.mp4', {
 **Important Note:** The audio enhancement features are primarily designed for enhancing audio tracks in video files. They work best when used with the `transcode` function for video files.
 
 For standalone audio files, the support varies by format:
-- WAV and AAC files are fully supported
-- MP3, FLAC, and OGG files may require specifying a codec with the `audioCodec` option
+- WAV and AAC files are fully supported for audio enhancement
+- MP3, FLAC, and OGG files are not fully supported for direct enhancement and will be skipped with a warning
+
+When batch processing audio files with enhancements:
+- WAV and AAC files will be processed normally
+- MP3, FLAC, and OGG files will be skipped with a warning message
+- No error will be thrown, allowing the batch process to continue with supported files
 
 When applying audio enhancements to video files, the audio track is processed while preserving the video quality.
 
@@ -529,6 +534,36 @@ await transcodeAudio('temp.wav', 'enhanced.wav', {
   normalize: true,
   noiseReduction: 0.2
 });
+```
+
+You can also use the batch processing feature to enhance multiple audio files:
+
+```javascript
+import { batchProcessDirectory } from '@profullstack/transcoder';
+
+// Batch enhance audio files
+const result = await batchProcessDirectory('./audio-files', {
+  outputDir: './enhanced-audio',
+  transcodeOptions: {
+    audio: {
+      normalize: true,
+      noiseReduction: 0.2,
+      fadeIn: 0.5,
+      fadeOut: 0.5
+    }
+  }
+}, {
+  mediaTypes: ['audio']
+});
+
+// Check for skipped files
+const skippedFiles = result.results.failed.filter(file => file.skipped);
+if (skippedFiles.length > 0) {
+  console.log('Skipped files:');
+  skippedFiles.forEach(file => {
+    console.log(`- ${file.input}: ${file.warning}`);
+  });
+}
 ```
 
 ### Using the CLI Tool
