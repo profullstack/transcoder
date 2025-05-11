@@ -1,6 +1,6 @@
 {
   "name": "@profullstack/transcoder",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "description": "A server-side module for transcoding videos, audio, and images using FFmpeg with smart presets and optimizations",
   "type": "module",
   "main": "index.js",
