@@ -424,7 +424,11 @@ async function processFile(filePath, settings, emitter, index) {
  * @param {boolean} [options.verbose=false] - Whether to log verbose output
  * @returns {Promise<Object>} - Promise that resolves with batch processing results
  */
-export async function batchProcess(filePaths, options) {
+export async function batchProcess(filePaths, options = {}) {
+  if (!Array.isArray(filePaths) || filePaths.length === 0) {
+    throw new Error('File paths array is required and must not be empty');
+  }
+
   // Create an emitter for batch processing events or use the provided one
   const emitter = options.emitter || new BatchProcessEmitter();
   
