@@ -68,6 +68,16 @@ describe('Batch Processing Module', function() {
   });
 
   describe('batchProcess()', function() {
+    it('should reject an empty file list with a clear error', async function() {
+      try {
+        await batchProcess([]);
+        expect.fail('Should have thrown an error for an empty file list');
+      } catch (error) {
+        expect(error).to.be.an('error');
+        expect(error.message).to.include('File paths array is required');
+      }
+    });
+
     it('should process a batch of files', async function() {
       // Find a test video file
       const testFiles = fs.readdirSync(TEST_INPUT_DIR)
