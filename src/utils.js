@@ -8,6 +8,51 @@ import fs from 'fs';
 import path from 'path';
 
 /**
+ * Safely parses ffprobe frame-rate values such as "30000/1001" or "25".
+ *
+ * @param {string|number} frameRate - FFprobe r_frame_rate value
+ * @returns {number} - Parsed frame rate, or 0 for invalid values
+ */
+export function parseFfprobeFrameRate(frameRate) {
+  if (typeof frameRate === 'number') {
+    return Number.isFinite(frameRate) && frameRate > 0 ? frameRate : 0;
+  }
+
+  if (typeof frameRate !== 'string') {
+    return 0;
+  }
+
+  const value = frameRate.trim();
+  if (!value) {
+    return 0;
+  }
+
+  if (value.includes('/')) {
+    const [numerator, denominator] = value.split('/');
+    if (!numerator || !denominator || value.split('/').length !== 2) {
+      return 0;
+    }
+
+    const parsedNumerator = Number(numerator);
+    const parsedDenominator = Number(denominator);
+
+    if (
+      !Number.isFinite(parsedNumerator) ||
+      !Number.isFinite(parsedDenominator) ||
+      parsedNumerator <= 0 ||
+      parsedDenominator <= 0
+    ) {
+      return 0;
+    }
+
+    return parsedNumerator / parsedDenominator;
+  }
+
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : 0;
+}
+
+/**
  * Gets video metadata using ffprobe
  *
  * @param {string} inputPath - Path to the video file
@@ -68,7 +113,7 @@ export async function getVideoMetadata(inputPath) {
               width: videoStream.width,
               height: videoStream.height,
               bitrate: parseInt(videoStream.bit_rate) || 0,
-              fps: eval(videoStream.r_frame_rate) || 0,
+              fps: parseFfprobeFrameRate(videoStream.r_frame_rate),
               pixelFormat: videoStream.pix_fmt,
               colorSpace: videoStream.color_space,
               duration: parseFloat(videoStream.duration) || 0
