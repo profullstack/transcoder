@@ -9,6 +9,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { transcode, generateThumbnails } from '../index.js';
+import { formatThumbnailPattern } from '../src/thumbnails.js';
 
 // Get the directory name of the current module
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -55,6 +56,14 @@ describe('Thumbnail Generation', function() {
   });
   
   describe('generateThumbnails function', function() {
+    it('should preserve zero-padded thumbnail filename patterns', function() {
+      expect(formatThumbnailPattern('thumbnail-%03d', 1)).to.equal('thumbnail-001');
+      expect(formatThumbnailPattern('thumbnail-%03d', 12)).to.equal('thumbnail-012');
+      expect(formatThumbnailPattern('thumbnail-%d', 3)).to.equal('thumbnail-3');
+      expect(formatThumbnailPattern('thumbnail-%3d', 3)).to.equal('thumbnail-3');
+      expect(formatThumbnailPattern('frame-%04d.jpg', 7)).to.equal('frame-0007.jpg');
+    });
+
     it('should validate input parameters', async function() {
       // Test missing input path
       try {

@@ -10,6 +10,20 @@ import { checkFfmpeg } from './core.js';
 import { getVideoDuration, validatePaths, ensureOutputDirectory } from './utils.js';
 
 /**
+ * Formats an FFmpeg-style thumbnail sequence pattern.
+ *
+ * @param {string} pattern - Filename pattern containing %d, %Nd, or %0Nd
+ * @param {number} index - 1-based thumbnail index
+ * @returns {string} - Formatted filename
+ */
+export function formatThumbnailPattern(pattern, index) {
+  return pattern.replace(/%(\d*)d/, (match, width) => {
+    const value = String(index);
+    return width?.startsWith('0') ? value.padStart(Number(width), '0') : value;
+  });
+}
+
+/**
  * Generates thumbnails from a video file
  *
  * @param {string} inputPath - Path to the input video file
@@ -84,7 +98,7 @@ export async function generateThumbnails(inputPath, outputDir, options) {
     // Use specific timestamps
     for (let i = 0; i < settings.timestampList.length; i++) {
       const timestamp = settings.timestampList[i];
-      const outputPath = path.join(outputDir, `${settings.filenamePattern.replace(/%\d*d/, i + 1)}.${settings.format}`);
+      const outputPath = path.join(outputDir, `${formatThumbnailPattern(settings.filenamePattern, i + 1)}.${settings.format}`);
       thumbnailPaths.push(outputPath);
       
       // Create a separate ffmpeg command for each timestamp
@@ -126,7 +140,7 @@ export async function generateThumbnails(inputPath, outputDir, options) {
     
     for (let i = 0; i < settings.count; i++) {
       const time = interval * (i + 1);
-      const outputPath = path.join(outputDir, `${settings.filenamePattern.replace(/%\d*d/, i + 1)}.${settings.format}`);
+      const outputPath = path.join(outputDir, `${formatThumbnailPattern(settings.filenamePattern, i + 1)}.${settings.format}`);
       thumbnailPaths.push(outputPath);
       
       // Create a separate ffmpeg command for each interval
@@ -272,7 +286,7 @@ export async function generateThumbnailsEfficient(inputPath, options) {
         // Generate the list of thumbnail paths
         const thumbnailPaths = [];
         for (let i = 1; i <= thumbnailCount; i++) {
-          thumbnailPaths.push(settings.outputPattern.replace('%d', i));
+          thumbnailPaths.push(formatThumbnailPattern(settings.outputPattern, i));
         }
         resolve(thumbnailPaths);
       } else {
