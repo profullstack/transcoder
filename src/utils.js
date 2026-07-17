@@ -218,7 +218,7 @@ export async function getImageMetadata(inputPath) {
     // Use ImageMagick identify to get image metadata
     const args = [
       '-format',
-      '%w %h %m %Q %[colorspace] %b',
+      '%w %h %m %Q %[colorspace] %B',
       inputPath
     ];
     
@@ -252,7 +252,7 @@ export async function getImageMetadata(inputPath) {
           result.format = {
             filename: inputPath,
             formatName: format,
-            size: parseInt(filesize) || 0
+            size: parseInt(filesize, 10) || 0
           };
           
           // Image metadata
