@@ -19,6 +19,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The test suite shells out to ffmpeg/ffprobe and ImageMagick's convert;
+      # install them so the integration tests can run on the runner.
+      - name: Install FFmpeg and ImageMagick
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg imagemagick
+
       # pnpm version is read from the "packageManager" field in package.json.
       # Do not pin a version here — it conflicts with packageManager and fails
       # with ERR_PNPM_BAD_PM_VERSION.
