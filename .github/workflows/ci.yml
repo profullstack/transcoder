@@ -1,0 +1,43 @@
+# Managed by sh1pt Actions Fleet
+# pack: node-pnpm-ci@1.2.0
+# install: sh1pt-actions-store
+# hash: sha256:4c5b9b88dee99de5f463194b4784ab267b400789a6d0f1aaf5b5dede9236376f
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm version is read from the "packageManager" field in package.json.
+      # Do not pin a version here — it conflicts with packageManager and fails
+      # with ERR_PNPM_BAD_PM_VERSION.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # typecheck / test default to `pnpm run --if-present <script>` so a repo
+      # that hasn't defined these scripts yet gets a green workflow instead of
+      # failing on the first step. Once the scripts exist they run normally.
+      - run: pnpm run --if-present typecheck
+
+      - run: pnpm run --if-present test
