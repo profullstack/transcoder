@@ -1,19 +1,23 @@
 # Managed by sh1pt Actions Fleet
-# pack: node-pnpm-test@1.2.0
+# pack: node-pnpm-ci@1.2.0
 # install: sh1pt-actions-store
-# hash: sha256:53499e840c5023f2235444afd4f6a36d2c0bf8a40c52cfdf84615b17624de69b
-name: test
+# hash: sha256:4c5b9b88dee99de5f463194b4784ab267b400789a6d0f1aaf5b5dede9236376f
+name: CI
 
 on:
-  pull_request:
   push:
-    branches: [master]
+    branches: [main, master]
+  pull_request:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -31,14 +35,14 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
-      # test defaults to `pnpm run --if-present test` so a repo that hasn't
-      # defined a test script yet gets a green workflow instead of failing on
-      # the first step. Once the script exists it runs normally.
+      # typecheck / test default to `pnpm run --if-present <script>` so a repo
+      # that hasn't defined these scripts yet gets a green workflow instead of
+      # failing on the first step. Once the scripts exist they run normally.
+      - run: pnpm run --if-present typecheck
+
       - run: pnpm run --if-present test
-        env:
-          CI: true
