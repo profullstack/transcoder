@@ -85,3 +85,33 @@ export {
   createBatchUI,
   attachBatchUI
 } from './terminal-ui.js';
+
+// Export generative media functionality
+export {
+  generateImage,
+  generateVideo,
+  generateSpeech,
+  generateMusic,
+  generateBatch,
+  registerProvider,
+  getProvider,
+  listProviders,
+  describeProviders,
+  resolveProvider,
+  hasCredentials,
+  supports,
+  GeneratedMedia,
+  pcmToWav,
+  parsePcmMimeType,
+  extensionForMimeType,
+  GenMediaError,
+  MissingCredentialsError,
+  UnsupportedCapabilityError,
+  ProviderResponseError,
+  GenerationTimeoutError,
+  CAPABILITIES,
+  PROVIDER_PREFERENCE
+} from './genmedia/index.js';
+
+// Also available as a namespace: import { genmedia } from '@profullstack/transcoder'
+export * as genmedia from './genmedia/index.js';
