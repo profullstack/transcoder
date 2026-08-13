@@ -27,6 +27,7 @@ A lightweight Node.js module for transcoding videos to web-friendly MP4 format u
 - Audio enhancement features (normalization, noise reduction, fades)
 - Thumbnail Generation at specified intervals or timestamps
 - Batch processing of multiple files with a fancy terminal UI
+- Generative media (image, video, speech, music) behind one provider-agnostic interface
 - No file storage - just passes through to FFmpeg
 - Lightweight with minimal dependencies
 
@@ -566,6 +567,111 @@ if (skippedFiles.length > 0) {
 }
 ```
 
+### Generating Media
+
+Alongside transcoding, the module can generate images, video, speech and music through one provider-agnostic interface. Generated assets come back as ordinary files, so the existing ffmpeg pipeline picks them up without any glue code.
+
+This adds **no runtime dependencies** — every provider is a plain `fetch` call against a documented REST endpoint.
+
+```javascript
+import { generateImage, generateSpeech, transcodeAudio } from '@profullstack/transcoder';
+
+// Generate an image
+const image = await generateImage({
+  prompt: 'A wide editorial photo of an empty recording studio at golden hour',
+  aspectRatio: '16:9'
+});
+await image.toFile('./output/studio.png');
+
+// Generate a voiceover, then transcode it with the existing pipeline
+const speech = await generateSpeech({ text: 'Here is what changed in this release.' });
+const raw = await speech.toFile('./output/voiceover');
+await transcodeAudio(raw, './output/voiceover.mp3', { preset: 'audio-high' });
+```
+
+#### Providers
+
+| Provider | Capabilities | Credentials |
+|----------|--------------|-------------|
+| `google` | image, video, speech, music | `GOOGLE_API_KEY` (Lyria also needs `GOOGLE_CLOUD_PROJECT` and `GOOGLE_ACCESS_TOKEN`) |
+| `openai` | image, speech | `OPENAI_API_KEY` |
+| `elevenlabs` | speech | `ELEVENLABS_API_KEY` |
+
+A provider is chosen automatically: the first preferred provider for that capability that actually has credentials configured. Speech prefers ElevenLabs, images prefer Google, and both can be overridden per call with `provider`, or globally with the `GENMEDIA_PROVIDER` environment variable.
+
+```javascript
+import { describeProviders } from '@profullstack/transcoder';
+
+// Which providers are usable right now?
+console.log(describeProviders());
+// [{ name: 'google', capabilities: [...], envVars: [...], configured: false }, ...]
+```
+
+#### Video with synchronized audio
+
+Veo generates its own dialogue, effects and ambient audio, which removes the separate voiceover and mux stages from a typical short-video pipeline:
+
+```javascript
+const clip = await generateVideo({
+  prompt: 'Slow dolly across a quiet workshop, dust in the light, ambient room tone',
+  aspectRatio: '16:9',
+  onProgress: ({ elapsed }) => console.log(`rendering (${Math.round(elapsed / 1000)}s)`)
+});
+
+console.log(clip.meta.hasNativeAudio); // true
+await clip.toFile('./output/clip.mp4');
+```
+
+Video generation is a long-running operation and is polled internally until it completes, up to `maxWait` (default 10 minutes).
+
+#### Multi-speaker speech
+
+A single call produces a two-host conversation, with no editing step between the parts:
+
+```javascript
+const dialogue = await generateSpeech({
+  provider: 'google',
+  text: 'Host: So what shipped this week?\nGuest: The shared media layer.',
+  speakers: [
+    { speaker: 'Host', voice: 'Kore' },
+    { speaker: 'Guest', voice: 'Puck' }
+  ]
+});
+```
+
+Google's speech models return headerless PCM; it is wrapped in a WAV container automatically so ffmpeg does not need out-of-band format hints.
+
+#### Music beds
+
+```javascript
+const bed = await generateMusic({
+  prompt: 'An understated, optimistic instrumental bed with light percussion',
+  seed: 42
+});
+```
+
+Generated music sidesteps the licensing problem that otherwise prevents user-facing video products from shipping with a soundtrack at all.
+
+#### Batch generation
+
+Providers rate limit, so an unbounded `Promise.all` over a storyboard is the quickest route to `429`s. `generateBatch` bounds concurrency, preserves input order, and captures per-item errors rather than failing the whole run:
+
+```javascript
+const results = await generateBatch(
+  scenes.map(prompt => ({ kind: 'image', prompt })),
+  { concurrency: 2, onProgress: ({ completed, total }) => console.log(`${completed}/${total}`) }
+);
+
+for (const { media, error, index } of results) {
+  if (error) continue;
+  await media.toFile(`./output/scene-${index + 1}`);
+}
+```
+
+Rate limits and transient upstream faults are retried with exponential backoff and `Retry-After` support; client errors such as a rejected prompt fail immediately.
+
+See [examples/genmedia.js](examples/genmedia.js) for a runnable walkthrough.
+
 ### Using the CLI Tool
 
 The module includes a command-line interface (CLI) for easy video transcoding, thumbnail generation, and watermarking directly from your terminal:
@@ -837,6 +943,54 @@ Generates thumbnails from a video file without transcoding.
 **Returns:**
 
 - Promise that resolves with an array of thumbnail paths
+
+### generateImage(options) / generateVideo(options) / generateSpeech(options) / generateMusic(options)
+
+Generates a media asset through the configured provider.
+
+**Common options:**
+
+- `provider` (string): Force a specific provider instead of resolving one
+- `model` (string): Override the provider's default model
+- `apiKey` (string): Credentials, otherwise read from the environment
+- `timeout` (number): Per-request timeout in ms (default: `120000`)
+- `retries` (number): Retries after the first attempt (default: `3`)
+- `fetchImpl` (Function): Fetch implementation, useful in tests
+
+**Capability-specific options:**
+
+- `generateImage`: `prompt`, `aspectRatio`, `size`, `referenceImages`
+- `generateVideo`: `prompt`, `aspectRatio`, `resolution`, `negativePrompt`, `image`, `pollInterval`, `maxWait`, `onProgress`
+- `generateSpeech`: `text`, `voice`, `speakers`, `instructions`, `format`
+- `generateMusic`: `prompt`, `negativePrompt`, `seed`, `projectId`, `location`, `accessToken`
+
+**Returns:**
+
+- Promise that resolves with a `GeneratedMedia` instance: `{ data, mimeType, provider, model, kind, meta }`, plus `size`, `extension`, `toFile(path)` and `toDataUri()`
+
+### generateBatch(requests, [options])
+
+Generates several assets concurrently with a bounded number of requests in flight.
+
+**Parameters:**
+
+- `requests` (Array): Requests as `{ kind, ...options }` where `kind` is `image`, `video`, `speech` or `music`
+- `options.concurrency` (number): Maximum requests in flight (default: `3`)
+- `options.onProgress` (Function): Called with `{ index, total, completed, error }`
+
+**Returns:**
+
+- Promise that resolves with an array of `{ index, media, error }`, in the order the requests were given
+
+### describeProviders()
+
+**Returns:**
+
+- Array of `{ name, capabilities, defaultModels, envVars, configured }`, one entry per registered provider
+
+### registerProvider(provider)
+
+Registers a custom provider. A provider is an object with `name`, `capabilities`, `envVars`, and any of `generateImage`, `generateVideo`, `generateSpeech`, `generateMusic`.
 
 ### BatchProcessEmitter Events
 
