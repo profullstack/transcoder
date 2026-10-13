@@ -149,6 +149,17 @@ sudo pacman -S ffmpeg
 ## Installation
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/profullstack/transcoder/master/install.sh | sh
+```
+
+That installs the `transcoder`, `install-ffmpeg` and `install-imagemagick` commands under
+`~/.local` (no root; it brings its own Node if yours is older than 20). It does not build
+FFmpeg or ImageMagick: run `install-ffmpeg` / `install-imagemagick` yourself if you need
+them. Remove it with `sh ~/.local/share/transcoder/uninstall.sh`.
+
+For the library, add it to your project:
+
+```bash
 npm install @profullstack/transcoder
 # or
 yarn add @profullstack/transcoder
